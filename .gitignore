@@ -1,0 +1,8 @@
+CLAUDE.md
+.idea
+.vscode
+
+# Qwen 运行文件
+/Qwen/log/
+/Qwen/**/__pycache__/
+/Qwen/**/*.py[cod]
