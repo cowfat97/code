@@ -6,3 +6,4 @@ CLAUDE.md
 /Qwen/log/
 /Qwen/**/__pycache__/
 /Qwen/**/*.py[cod]
+/Qwen/.venv/

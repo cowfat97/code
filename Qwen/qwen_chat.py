@@ -30,7 +30,7 @@ from output_parser import ActionOutput, fallback_reply, parse_action
 
 logger = logging.getLogger("qwen_chat")  # 本文件统一用这个 logger，入口配置输出
 
-model_name_or_path = "Qwen/Qwen3-1.7B"
+model_name_or_path = "Qwen/Qwen3-4B"
 
 # Outlines 根据 ActionOutput 生成状态机，在每个 token 采样前屏蔽非法候选。
 model = AutoModelForCausalLM.from_pretrained(
@@ -106,7 +106,7 @@ def chat(user_text):
 
         # ④ Observation：执行行动得到观察，写入记忆后进入下一轮。
         # 注入文本统一带 [观察] 前缀，供记忆模块检索时排除（防自我污染）；
-        # 附「禁止再次检索」指令——1.7B 拿到检索结果后容易反复发 memory_search。
+        # 附「禁止再次检索」指令——小参数模型拿到检索结果后容易反复发 memory_search。
         search_count += 1
         observation = execute(action, arg)
         logger.info("观察 = %s…", observation[:50])
