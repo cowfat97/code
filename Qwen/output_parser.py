@@ -2,7 +2,8 @@
 import json
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from typing import Any
 
 
 class ActionOutput(BaseModel):
@@ -11,6 +12,15 @@ class ActionOutput(BaseModel):
     thought: str
     action: Literal["answer", "memory_search"]
     argument: str
+
+
+class VllmActionOutput(BaseModel):
+    """vLLM 工具协议；原本地模型协议保持不变。"""
+
+    model_config = ConfigDict(extra="forbid")
+    thought: str
+    action: str
+    argument: Any  # 由注册工具的参数类型做进一步严格校验。
 
 
 def parse_action(text):
