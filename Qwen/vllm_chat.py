@@ -57,7 +57,7 @@ def _generate(turns, tools, allowed_actions):
         #   0.8–1.0 ：创意文案、故事、多方案生成。
         #   >1.0    ：随机性更强，也更容易跑题或出错，谨慎使用。
         # 实际效果还受模型、提示词、top_p/top_k 和 Schema 约束影响。
-        "temperature": 0.5,
+        "temperature": 0.0,  # 贪心解码
         # top_p：核采样，按累计概率保留候选 token；范围 (0, 1]。
         # 1 禁用此过滤；越小候选通常越少。0.9 是概率阈值，不是保留 90% 词汇。
         "top_p": 0.9,
