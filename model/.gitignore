@@ -1,0 +1,28 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Local environments and secrets
+.venv/
+.env
+
+# Training outputs
+checkpoints/
+outputs/
+runs/
+logs/
+wandb/
+tensorboard/
+
+# Model weights
+*.ckpt
+*.pt
+*.pth
+*.safetensors
+
+# Local datasets; keep documentation and explicit samples tracked.
+datasets/*
+!datasets/.gitkeep
+!datasets/README.md
+!datasets/samples/
+!datasets/samples/**
