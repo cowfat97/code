@@ -11,9 +11,6 @@ torch==2.14.0
 transformers==5.16.1
 accelerate==1.14.0
 
-# JSON Schema 约束解码与输出校验
-outlines[transformers]==1.3.3
-
 # HTTP 服务
 fastapi==0.141.1
 uvicorn[standard]==0.52.4

@@ -1,9 +1,9 @@
-# memory/session_memory.py —— 记忆模块 + 终端实验入口（一个文件）
+# memory/session_memory.py —— 进程内会话记忆 + vLLM 终端实验入口
 #
 # 两种用法：
-#   1. 被 import：记忆方法——qwen_chat.chat 通过这里读写记忆
+#   1. 被 import：记忆方法——vllm_chat.chat 通过这里读写记忆
 #   2. 直接运行：终端实验——python memory/session_memory.py，循环调 chat 观察记忆
-#      （import qwen_chat 放在 __main__ 里，避免模块间循环 import）
+#      （import vllm_chat 放在函数内，避免模块间循环 import）
 import logging
 import sys
 from pathlib import Path
@@ -73,11 +73,11 @@ def stats():
 
 
 def _run_terminal_experiment():
-    """终端实验：循环调 chat，观察 ReAct 每步日志和记忆状态。"""
+    """终端实验：通过本地 vLLM 服务循环对话并观察记忆状态。"""
     setup_logging()
-    from qwen_chat import chat
+    from vllm_chat import chat
 
-    print("会话记忆实验·本地模型（quit/exit 退出）")
+    print("会话记忆实验·本地 vLLM（quit/exit 退出）")
     rounds = 0
     while True:
         user_text = input("你: ")

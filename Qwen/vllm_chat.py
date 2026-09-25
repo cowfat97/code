@@ -1,9 +1,9 @@
-"""vLLM HTTP 聊天后端；不导入 qwen_chat，不在本进程加载模型。
+"""vLLM HTTP 聊天后端；通过独立服务推理，不在本进程加载模型。
 
 运行：python vllm_chat.py
 配置：VLLM_BASE_URL（默认 http://127.0.0.1:8000/v1）、VLLM_MODEL、
 VLLM_API_KEY（可选）、VLLM_TIMEOUT（秒，默认 120）。
-服务需提前启动；与 qwen_chat 共用 session_memory 的进程内单会话记忆。
+服务需提前启动；会话状态保存在 session_memory 的进程内单会话记忆中。
 """
 
 import json
@@ -84,7 +84,7 @@ def _generate(turns, tools, allowed_actions):
             # 与上面的两种加性惩罚不同，此项按比例调整 logits；过强会影响必要重复。
             "repetition_penalty": 1.0,
         },
-        # response_format：以 ActionOutput 的 JSON Schema 约束输出结构，非采样参数。
+        # response_format：以 VllmActionOutput 的 JSON Schema 约束输出结构，非采样参数。
         # 约束字段和类型，不保证内容真实；仍需完整接收后进行本地校验。
         "response_format": {
             "type": "json_schema",
