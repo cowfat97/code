@@ -19,11 +19,9 @@
 # 兜底：输出格式漂移（解析不出行动）降级为直接回答；超 3 步兜底返回最后输出。
 import logging
 import time
-
 import outlines
 from outlines.inputs import Chat
 from transformers import AutoModelForCausalLM, AutoTokenizer
-
 from logging_config import setup_logging
 from memory.session_memory import as_list, inject, record, remember, search, stats
 from output_parser import ActionOutput, fallback_reply, parse_action
