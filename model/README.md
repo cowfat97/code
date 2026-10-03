@@ -1,44 +1,36 @@
 # Model Lab
 
-这个目录用于从零实现并训练个人小型深度学习模型，重点是理解模型原理、训练流程、评估方法和推理过程。按**模型架构**组织，而不是按 NLP 任务分类。
+一条流水线，从训练到推理：**train → evaluate → predict**。顶层只按流水线阶段划分，不按任务、也不按模型分目录；具体跑哪个任务、用哪个模型，由 `configs/` 里的配置决定。
 
 ## 目录说明
 
 | 目录 | 用途 |
 | --- | --- |
-| `mlp/` | 感知机与多层感知机：激活函数、损失函数、反向传播、优化器对比 |
-| `cnn/` | 卷积与池化、BatchNorm、残差连接 |
-| `rnn/` | 原生 RNN：手写前向与 BPTT，观察梯度消失 |
-| `lstm/` | 三门 LSTM：遗忘门、输入门、输出门 |
-| `gru/` | 两门 GRU：重置门、更新门 |
-| `seq2seq/` | Encoder-Decoder 与注意力机制，RNN 系序列到序列 |
-| `transformer/` | Self-Attention、多头注意力、位置编码 |
-| `common/` | 可复用的数据、训练、评估和工具代码 |
-| `datasets/` | 小型示例数据或数据说明；大数据集不提交到 Git |
-| `configs/` | 可共享的训练与模型配置 |
+| `train/` | 训练阶段入口 |
+| `evaluate/` | 评估阶段入口 |
+| `predict/` | 推理阶段入口 |
+| `configs/` | 每个实验一份配置：任务、模型、数据、超参数 |
+| `datasets/` | 数据读取与预处理；大数据集不提交到 Git |
+| `common/` | 三个阶段共用的代码：数据加载、模型定义、训练循环、指标、日志、随机种子、注册表 |
 
-建议推进顺序：`mlp` → `cnn` → `rnn` → `lstm` → `gru` → `seq2seq` → `transformer`。每个架构先用最小数据集跑通完整流程（前向、损失、反向、评估、推理），再增加复杂度。
+## 配置决定任务
 
-## 实验结构
+三个阶段是同一套代码，切换任务或模型只改配置、不改代码：
 
-每个具体实验在对应架构目录下单独建立子目录。可按需使用以下结构，不要为了结构完整而创建用不到的文件：
-
-```text
-experiment_name/
-├── README.md       # 目标、数据、运行方法和结果
-├── dataset.py     # 数据读取与预处理
-├── model.py       # 模型结构
-├── train.py       # 训练入口
-├── evaluate.py    # 评估入口
-├── predict.py     # 推理入口
-└── config.yaml    # 超参数和路径配置
+```yaml
+# configs/classification_rnn.yaml
+task: classification     # 任务：分类、回归、序列标注……
+model: rnn               # 模型结构：mlp、cnn、rnn、lstm、gru、seq2seq、transformer
+hidden_size: 128
+num_layers: 2
+epochs: 20
+batch_size: 32
 ```
 
 ## 约定
 
 - 优先使用小数据集和小模型验证完整流程。
-- 训练、评估和推理应使用明确的入口，保持实验可复现。
+- `train/`、`evaluate/`、`predict/` 共用同一套数据处理与模型定义，不复制代码；共用逻辑放 `common/`。
+- 新增任务或模型时不新建顶层目录，共用实现放 `common/`。
 - 配置中不写入密钥或个人凭证。
 - 模型权重、检查点、日志和大型数据文件不应直接提交到 Git。
-- 只有当代码已被多个实验共用时，才将它移入 `common/`。
-- 不同架构之间不互相 import 具体实验代码；共用逻辑下沉到 `common/`。
