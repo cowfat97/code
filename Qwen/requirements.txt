@@ -7,6 +7,9 @@ openai>=1.0,<3
 pydantic==2.13.5
 
 # 模型推理
+# torch：Windows 上 PyPI 默认源给的是 CPU 版，GPU 版要从 PyTorch 官方 CUDA 源安装。
+#   本机显卡 RTX 5060 Ti 属 Blackwell（sm_120），需要 cu128 以上的源；cu130 提供 2.14.0+cu130：
+#   python -m pip install --force-reinstall --no-deps "torch==2.14.0+cu130" --index-url https://download.pytorch.org/whl/cu130
 torch==2.14.0
 transformers==5.16.1
 accelerate==1.14.0
