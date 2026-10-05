@@ -25,7 +25,7 @@ _chat_lock = threading.Lock()
 def _generate(turns, tools, allowed_actions):
     """调用 OpenAI 兼容接口，用 JSON Schema 约束行动输出。"""
     base_url = os.getenv("VLLM_BASE_URL", "http://127.0.0.1:8000/v1").rstrip("/")
-    model = os.getenv("VLLM_MODEL", "Qwen/Qwen3-4B")
+    model = os.getenv("VLLM_MODEL", "abl-14b")  # 与 start-local-vllm 基线一致（服务的 --served-model-name）
     timeout = float(os.getenv("VLLM_TIMEOUT", "120"))
     if timeout <= 0:
         raise ValueError("VLLM_TIMEOUT 必须大于 0")

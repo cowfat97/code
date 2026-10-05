@@ -1,7 +1,7 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 # transformers：HuggingFace 的模型库，Auto 系列会根据模型名自动匹配合适的模型类
 
-model_name = "Qwen/Qwen3-4B"  # 4B 作为当前默认模型
+model_name = "Qwen/Qwen3-4B"  # 本地 Transformers 演示固定用 4B：当前 14B 无限制版是 AWQ 4bit，需量化库且 16G 显存装不下 bf16 版本
 # 模型名格式「机构/模型」，首次运行自动从 HuggingFace 下载到 ~/.cache/huggingface
 
 # 加载模型和分词器
