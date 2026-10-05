@@ -1,0 +1,26 @@
+# 训练阶段覆盖：只写训练相关的键，其余沿用 base.yaml
+
+run:
+  stage: train
+
+train:
+  init: scratch             # scratch=随机初始化自己写的模型
+                            # pretrained=加载 model 里的权重再训练（微调）
+                            # resume=从检查点继续训练
+  resume_from: null         # init=resume 时使用，如 runs/cls_rnn_01/last.pt
+  epochs: 20
+  batch_size: 32
+  grad_accum: 1             # 梯度累积步数；显存不足时用它顶到需要的有效批大小
+  grad_checkpoint: false    # 梯度检查点：用时间换显存，大模型微调基本必开
+  lr: 0.001
+  optimizer: adamw
+  log_every: 50
+  save_best: true
+  finetune:                 # 仅 init=pretrained 时读取
+    method: full            # full=全参微调 | lora=低秩适配 | freeze=冻结主干只训输出层
+    merge_on_save: false    # true = 额外导出一份把 LoRA 合并进基座的完整权重（便于交给 vLLM 等推理）
+    lora:                   # 仅 method=lora 时读取
+      r: 8
+      alpha: 16
+      dropout: 0.05
+      target_modules: [q_proj, v_proj]

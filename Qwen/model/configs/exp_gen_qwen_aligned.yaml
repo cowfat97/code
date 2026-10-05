@@ -1,0 +1,21 @@
+# 示例②-附：把文案生成的基座换成官方的对齐版 Qwen3-4B（做对照，或需要更稳的通用能力时用）
+# 用法：-c configs/base.yaml -c configs/train.yaml -c configs/exp_gen_qwen.yaml -c configs/exp_gen_qwen_aligned.yaml
+# 与主线唯一的区别是基座：数据、训练、生成参数全部继承 exp_gen_qwen.yaml。
+#
+# ⚠️ 本机缓存已于 2026-10-05 删除：首次使用需联网下载（约 7.5 GB）。
+#    想先下好再离线跑：hf download Qwen/Qwen3-4B，然后把下面 offline 改回 true。
+
+run:
+  run_name: gen_aligned_4b_01
+
+model:
+  source: remote
+  name: Qwen/Qwen3-4B       # 官方对齐版（本机已无缓存，需下载）
+  path: null
+  download:
+    hub: huggingface
+    fallback: modelscope
+    revision: main
+    cache_dir: null
+    offline: false          # 本地无缓存，必须联网下载（下载完成后可改回 true）
+  params: null

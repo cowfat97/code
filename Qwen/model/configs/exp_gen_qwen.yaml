@@ -1,0 +1,66 @@
+# 示例②：文案生成小模型（主线）—— 14B 无限制基座（4bit 量化）
+# 用法：-c configs/base.yaml -c configs/train.yaml -c configs/exp_gen_qwen.yaml
+# 想换成官方对齐版 4B 做对照，再叠加 configs/exp_gen_qwen_aligned.yaml
+#
+# ⚠️ 量化基座只能服务、不能直接训 LoRA：
+#    下面 model.name 是 AWQ / compressed-tensors 的 4bit 权重（本机已缓存 9.4 GB，供 vLLM 服务使用）。
+#    要训练必须换成 bf16 权重 huihui-ai/Huihui-Qwen3-14B-abliterated-v2（约 28 GB 下载），
+#    并改走 QLoRA（bitsandbytes 4bit 加载，约需 10~12 GB 显存）。
+
+run:
+  task: text_generation
+  run_name: gen_abl_14b_01
+  device: cuda
+
+model:
+  source: remote
+  name: warshanks/Huihui-Qwen3-14B-abliterated-v2-AWQ   # 无限制（abliterated）4bit 基座，本机已缓存 9.4 GB
+  path: null                # 也可直接指向目录，绕过 hub 与缓存
+  download:
+    hub: huggingface
+    fallback: modelscope
+    revision: main
+    cache_dir: null         # 留空才能复用 HF 默认缓存里那份（本机在 WSL 的 HF 缓存）
+    offline: true           # 已缓存，只读本地、不联网
+  params: null              # 结构由权重决定：qwen3 / 40 层 / hidden 5120 / 40 头 / 8 KV 头
+
+data:
+  path: datasets/copywriting
+  max_len: 512
+  template: chat            # instruct 模型套对话模板：system + user(prompt) → assistant(response)
+  template_kwargs: { enable_thinking: true }   # 创作类任务打开思考：实测文案明显更有画面感
+  system_prompt: "你是中文文案助手，按用户要求生成文案。"
+  columns:
+    prompt: prompt          # 用户要求
+    response: response      # 目标文案
+
+train:
+  init: pretrained          # 加载上面的基座权重再训练（微调）
+  epochs: 3
+  lr: 0.0002                # LoRA 常用 1e-4 ~ 3e-4
+  batch_size: 1             # 16G 显存：batch 1 + 梯度累积
+  grad_accum: 32            # 有效批大小 = 1 × 32
+  grad_checkpoint: true     # 用梯度检查点换显存
+  finetune:
+    method: lora            # 注意：AWQ 4bit 基座不能直接训；训练请换 bf16 权重并走 QLoRA
+    lora:
+      r: 16
+      alpha: 32
+      dropout: 0.05
+      target_modules: [q_proj, k_proj, v_proj, o_proj]   # Qwen 注意力层名；显存充足可再加 MLP 三层
+
+evaluate:
+  metrics: [perplexity, rouge-l]
+
+# 生成参数取"创作向"这一组（对照实验里效果最好的一组，实测优于模型自带的 temp 0.6 / top_k 20）
+predict:
+  generate:
+    max_new_tokens: 1024    # 打开思考后思考段会占不少 token，比关思考时给得更大
+    temperature: 0.9
+    top_p: 0.95
+    top_k: -1               # 关闭 top_k；服务端还需 --generation-config vllm 才能忽略模型自带的 top_k=20
+    presence_penalty: 0.6
+    frequency_penalty: 0.3
+    repetition_penalty: 1.05
+    do_sample: true
+    num_return_sequences: 1
