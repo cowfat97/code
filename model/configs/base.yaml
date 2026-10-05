@@ -1,0 +1,41 @@
+# 基础配置：所有阶段共用。阶段差异见 train.yaml / evaluate.yaml / predict.yaml
+# 这里的默认值是"从头训练自己写的模型"这条线；
+# 微调（分类 / 文案生成）见 exp_cls_bert.yaml、exp_gen_qwen.yaml
+
+run:
+  task: classification      # 任务类型：classification（分类）、text_generation（文案生成）、sequence_labeling……
+  run_name: cls_rnn_01      # 本次运行名称，输出写入 runs/<run_name>/
+  seed: 42
+  device: cpu               # cpu | cuda
+
+data:
+  path: datasets/example    # 数据集目录或文件
+  max_len: 128              # 序列截断/补齐长度
+  batch_size: 32
+  template: plain           # plain=纯文本拼接；chat=套用模型对话模板（instruct 模型用）
+  template_kwargs: {}       # 传给对话模板的额外参数，如 Qwen3 的 { enable_thinking: false }
+  system_prompt: null       # 仅 template=chat 时使用
+  columns:                  # 按任务填写，用不到的行删掉
+    text: text              # 分类：输入文本列
+    label: label            # 分类：标签列
+    prompt: prompt          # 文案生成：输入要求列（纯语料续写时不用）
+    response: response      # 文案生成：目标文案列（纯语料续写时不用）
+
+# 模型来源：本地自己写的实现，或现成模型（权重来自本地目录或远端下载）
+model:
+  source: local             # local=仓库自己实现 | remote=现成模型
+  name: rnn                 # source=local  → 本地实现名（common/ 注册表键）
+                            # source=remote → 模型 id，如 bert-base-chinese、Qwen/Qwen3-4B
+  path: null                # 本地已有的模型目录；填了就只读本地、不联网
+  download:                 # 仅 source=remote 且 path 为空时读取
+    hub: huggingface        # huggingface | modelscope
+    fallback: modelscope    # 主源失败时回退；不需要就删掉这一行
+    revision: main          # 分支、标签或提交
+    cache_dir: null         # 留空 = 用该 hub 的默认缓存（HF 默认 ~/.cache/huggingface/hub）
+    offline: false          # true = 只用本地缓存，不联网；缓存缺失直接报错
+  params:                   # 本地实现的结构参数；用现成模型时在实验覆盖里写 null 清空
+    vocab_size: 10000
+    embed_dim: 128
+    hidden_size: 128
+    num_layers: 2
+    dropout: 0.1

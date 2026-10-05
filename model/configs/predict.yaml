@@ -1,0 +1,21 @@
+# 推理阶段覆盖：只写推理相关的键，其余沿用 base.yaml
+# 任务特有的输出参数放在实验覆盖里：分类见 exp_cls_bert.yaml，文案生成见 exp_gen_qwen.yaml
+# 部署与启动命令见 README.md 的「部署：本地 vLLM」一节
+
+run:
+  stage: predict
+
+predict:
+  # backend: local = 进程内用 transformers 加载权重（默认）
+  #          vllm  = 调用本机 WSL 里 vLLM 的 OpenAI 兼容接口，不在本进程加载权重
+  backend: local
+  base_url: http://127.0.0.1:8000/v1   # backend=vllm 时使用（本机 vLLM 在 8000；8001 是 Web 控制器）
+  api_key: EMPTY                       # vLLM 未开鉴权时随便填，客户端要求非空
+  model: abl-14b                       # 服务端 --served-model-name；挂 LoRA 时填 --lora-modules 的名字
+  batch_size: 64
+  # checkpoint 可以指向：① LoRA 适配器目录（基座由 model.source/name 给出）
+  #                      ② 合并后的完整模型目录（finetune.merge_on_save: true 的产物）
+  # backend=vllm 且适配器已用 --lora-modules 挂载时，checkpoint 只作记录，不参与加载
+  checkpoint: runs/gen_abl_14b_01
+  input: datasets/copywriting/test.jsonl
+  output: runs/gen_abl_14b_01/predictions.jsonl

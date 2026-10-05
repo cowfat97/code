@@ -1,0 +1,9 @@
+# 评估阶段覆盖：只写评估相关的键，其余沿用 base.yaml
+
+run:
+  stage: evaluate
+
+evaluate:
+  batch_size: 64
+  metrics: [perplexity, rouge-l]    # 文案生成用 perplexity / rouge-l；分类用 accuracy / precision / recall / f1
+  checkpoint: runs/gen_abl_14b_01   # 指向训练产出的适配器目录或合并后的完整模型目录

@@ -1,0 +1,45 @@
+# 示例①：分类小模型 —— 微调 BERT
+# 用法：-c configs/base.yaml -c configs/train.yaml -c configs/exp_cls_bert.yaml
+
+run:
+  task: classification
+  run_name: cls_bert_01
+
+model:
+  source: remote
+  name: bert-base-chinese   # HuggingFace 上为 google-bert/bert-base-chinese
+  download:
+    hub: huggingface
+    fallback: modelscope
+    revision: main
+    cache_dir: .cache/models
+    offline: false
+  params: null              # BERT 结构由权重决定，清空基础配置里的本地结构参数
+
+data:
+  path: datasets/cls_example
+  max_len: 128
+  columns:
+    text: text
+    label: label
+
+train:
+  init: pretrained          # 加载上面的预训练权重再训练（微调）
+  epochs: 3
+  lr: 0.00002               # BERT 微调常用 2e-5 ~ 5e-5
+  batch_size: 16
+  finetune:
+    method: full            # BERT 约 110M 参数，单卡全参微调可行；显存紧张改成 lora
+    lora:
+      r: 8
+      alpha: 16
+      dropout: 0.05
+      target_modules: [query, value]   # BERT 注意力层的模块名
+
+evaluate:
+  metrics: [accuracy, precision, recall, f1]
+
+predict:
+  classify:                 # 仅 task=classification 时读取
+    return_probabilities: true
+    label_names: null       # 留空则用数据集里的标签；也可显式列出
