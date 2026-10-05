@@ -1,21 +1,12 @@
-# memory/session_memory.py —— 进程内会话记忆 + vLLM 终端实验入口
+# agent/memory/session_memory.py —— 进程内会话记忆 + vLLM 终端实验入口
 #
 # 两种用法：
 #   1. 被 import：记忆方法——vllm_chat.chat 通过这里读写记忆
-#   2. 直接运行：终端实验——python memory/session_memory.py，循环调 chat 观察记忆
-#      （import vllm_chat 放在函数内，避免模块间循环 import）
+#   2. 模块运行：python -m agent.memory.session_memory，循环观察记忆
 import logging
-import sys
-from pathlib import Path
 
-# 兼容直接运行 `python memory/session_memory.py`。
-# 根目录路径必须在导入 prompts 前加入。
-project_root = str(Path(__file__).resolve().parent.parent)
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-from logging_config import setup_logging
-from prompts import REACT_SYSTEM_PROMPT
+from agent.core.logging import setup_logging
+from agent.core.prompts import REACT_SYSTEM_PROMPT
 
 logger = logging.getLogger("memory.session_memory")
 
@@ -75,7 +66,7 @@ def stats():
 def _run_terminal_experiment():
     """终端实验：通过本地 vLLM 服务循环对话并观察记忆状态。"""
     setup_logging()
-    from vllm_chat import chat
+    from agent.workflow.chat_workflow import orchestrate_chat
 
     print("会话记忆实验·本地 vLLM（quit/exit 退出）")
     rounds = 0
@@ -84,7 +75,7 @@ def _run_terminal_experiment():
         if user_text.lower() in {"quit", "exit"}:
             break
         rounds += 1
-        reply, count, chars = chat(user_text)  # 记忆在 ReAct 循环内部完成
+        reply, count, chars = orchestrate_chat(user_text)
         print(f"模型: {reply}")
         print(f"[记忆状态] {count} 条消息，共 {chars} 字符")  # 步骤 3 观察
 

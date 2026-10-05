@@ -1,6 +1,6 @@
 from typing import Annotated
 from pydantic import Field
-from memory.session_memory import search
+from agent.memory.session_memory import search
 from .base import ToolSpec
 
 

@@ -16,12 +16,12 @@ from pathlib import Path
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-# vllm_chat.py 在上一级目录
+# 项目包在上一级目录；兼容直接从 web 目录启动 controller.py。
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from logging_config import setup_logging
+from agent.core.logging import setup_logging
 
 setup_logging()
-from vllm_chat import chat  # 通过 API 调用 vLLM，复用 ReAct 循环和会话记忆
+from agent.workflow.chat_workflow import orchestrate_chat
 
 logger = logging.getLogger("controller")
 
@@ -40,7 +40,7 @@ def chat_endpoint(req: ChatRequest):
     # 内部流式接收，当前接口仍返回完整 JSON 回复。
     start = time.time()
     logger.info("收到请求：%s…", req.message[:50])
-    reply, count, chars = chat(req.message)  # 调核心函数（ReAct 循环），记忆在其内部完成
+    reply, count, chars = orchestrate_chat(req.message)
     logger.info("回复 %d 字，耗时 %.1f 秒", len(reply), time.time() - start)
     return {"reply": reply, "count": count, "chars": chars}
 

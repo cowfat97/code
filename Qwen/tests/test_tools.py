@@ -1,7 +1,7 @@
-"""运行：python -m unittest tool.test_tools"""
+"""运行：python -m unittest tests.test_tools"""
 import unittest
-from .calculator import calculate
-from .verifier import verify
+from agent.tools.calculator import calculate
+from agent.tools.verifier import verify
 
 
 class MathToolsTests(unittest.TestCase):

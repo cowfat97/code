@@ -5,7 +5,7 @@ from pathlib import Path
 
 def setup_logging():
     """日志同时输出到终端和 log/qwen.log。"""
-    log_dir = Path(__file__).resolve().parent / "log"
+    log_dir = Path(__file__).resolve().parents[2] / "log"
     log_dir.mkdir(exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,

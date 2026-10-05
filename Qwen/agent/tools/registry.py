@@ -1,7 +1,10 @@
 """显式注册可信工具模块；新增工具只需在此登记模块，不修改聊天流程。"""
 from importlib import import_module
 
-TOOL_MODULES = ("tool.calculator", "tool.memory_search")
+TOOL_MODULES = (
+    "agent.tools.calculator",
+    "agent.tools.memory_search",
+)
 
 
 def load_tools():

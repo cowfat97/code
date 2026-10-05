@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
-from .base import ToolSpec
-from .registry import load_tools, action_schema
+from agent.tools.base import ToolSpec
+from agent.tools.registry import action_schema, load_tools
 
 
 class RegistryTests(unittest.TestCase):
@@ -16,8 +16,8 @@ class RegistryTests(unittest.TestCase):
 
     def test_new_tool_without_chat_changes(self):
         spec = ToolSpec("echo", "测试工具", str, lambda value: value)
-        with patch("tool.registry.TOOL_MODULES", ("example",)), patch(
-            "tool.registry.import_module", return_value=SimpleNamespace(TOOL=spec)
+        with patch("agent.tools.registry.TOOL_MODULES", ("example",)), patch(
+            "agent.tools.registry.import_module", return_value=SimpleNamespace(TOOL=spec)
         ):
             tools = load_tools()
         self.assertEqual(tools["echo"].execute("hello"), "hello")

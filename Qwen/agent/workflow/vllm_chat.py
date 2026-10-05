@@ -1,6 +1,6 @@
 """vLLM HTTP 聊天后端；通过独立服务推理，不在本进程加载模型。
 
-运行：python vllm_chat.py
+运行：python quick_start.py
 配置：VLLM_BASE_URL（默认 http://127.0.0.1:8000/v1）、VLLM_MODEL、
 VLLM_API_KEY（可选）、VLLM_TIMEOUT（秒，默认 120）。
 服务需提前启动；会话状态保存在 session_memory 的进程内单会话记忆中。
@@ -8,15 +8,14 @@ VLLM_API_KEY（可选）、VLLM_TIMEOUT（秒，默认 120）。
 
 import json
 import logging
-import os
 import threading
 from openai import OpenAI, APIConnectionError, APIStatusError, APIResponseValidationError
 
-from logging_config import setup_logging
-from memory.session_memory import as_list, inject, record, remember, stats
-from output_parser import VllmActionOutput
-from prompts import REACT_SYSTEM_PROMPT
-from tool.registry import load_tools, action_schema
+from agent.core.config import get_vllm_config
+from agent.core.prompts import REACT_SYSTEM_PROMPT
+from agent.core.schemas import VllmActionOutput
+from agent.memory.session_memory import as_list, inject, record, remember, stats
+from agent.tools.registry import action_schema, load_tools
 
 logger = logging.getLogger("vllm_chat")
 _chat_lock = threading.Lock()
@@ -24,11 +23,7 @@ _chat_lock = threading.Lock()
 
 def _generate(turns, tools, allowed_actions):
     """调用 OpenAI 兼容接口，用 JSON Schema 约束行动输出。"""
-    base_url = os.getenv("VLLM_BASE_URL", "http://127.0.0.1:8000/v1").rstrip("/")
-    model = os.getenv("VLLM_MODEL", "abl-14b")  # 与 start-local-vllm 基线一致（服务的 --served-model-name）
-    timeout = float(os.getenv("VLLM_TIMEOUT", "120"))
-    if timeout <= 0:
-        raise ValueError("VLLM_TIMEOUT 必须大于 0")
+    config = get_vllm_config()
     schema = action_schema(tools, allowed_actions)
     definitions = [tools[name].definition() for name in allowed_actions if name != "answer"]
     tool_context = "\n当前可用工具：\n" + json.dumps(definitions, ensure_ascii=False)
@@ -39,7 +34,7 @@ def _generate(turns, tools, allowed_actions):
     else:
         turns.insert(0, {"role": "system", "content": REACT_SYSTEM_PROMPT + tool_context})
     payload = {
-        "model": model,
+        "model": config.model,
         "messages": turns,
         # max_tokens：单次生成的 token 上限（正整数），不是字符数或会话总长度。
         # 还受服务端上下文容量限制；过小可能截断 JSON，过大会增加潜在耗时。
@@ -97,9 +92,9 @@ def _generate(turns, tools, allowed_actions):
     try:
         # 本地 vLLM 未开启鉴权时，SDK 仍需要一个非空占位 key。
         with OpenAI(
-            base_url=base_url,
-            api_key=os.getenv("VLLM_API_KEY") or "EMPTY",
-            timeout=timeout,
+            base_url=config.base_url,
+            api_key=config.api_key,
+            timeout=config.timeout,
             max_retries=0,
         ) as client:
             result = client.chat.completions.create(**payload)
@@ -127,7 +122,7 @@ def _generate(turns, tools, allowed_actions):
     except APIStatusError as exc:
         raise RuntimeError(f"vLLM HTTP {exc.status_code}: {exc.response.text[:2048]}") from exc
     except APIConnectionError as exc:
-        raise RuntimeError(f"无法连接 vLLM 或请求超时：{base_url}，请检查服务状态") from exc
+        raise RuntimeError(f"无法连接 vLLM 或请求超时：{config.base_url}，请检查服务状态") from exc
     except (APIResponseValidationError, ValueError) as exc:
         raise RuntimeError("vLLM 返回的响应格式无效") from exc
     except (AttributeError, IndexError, TypeError) as exc:
@@ -137,11 +132,12 @@ def _generate(turns, tools, allowed_actions):
     return content
 
 
-def chat(user_text):
-    """HTTP ReAct 聊天，返回 (reply, count, chars)。失败时回滚本轮记忆。
+def chat(agent):
+    """执行请求的核心 Agent Loop，返回 (reply, count, chars)。失败时回滚本轮记忆。
 
     同一后端的请求串行执行；本项目的全局记忆不支持多用户会话隔离。
     """
+    user_text = agent
     if not isinstance(user_text, str) or not user_text.strip():
         raise ValueError("消息必须是非空字符串")
     with _chat_lock:
@@ -201,19 +197,3 @@ def chat(user_text):
         except Exception:
             record(previous)
             raise
-
-
-if __name__ == "__main__":
-    setup_logging()
-    print("vLLM HTTP 聊天（quit/exit 退出）")
-    while True:
-        try:
-            text = input("你: ")
-            if text.strip().lower() in {"quit", "exit"}:
-                break
-            reply, count, chars = chat(text)
-            print(f"模型: {reply}\n[记忆状态] {count} 条消息，共 {chars} 字符")
-        except (EOFError, KeyboardInterrupt):
-            break
-        except (RuntimeError, ValueError) as exc:
-            print(f"请求失败：{exc}")
