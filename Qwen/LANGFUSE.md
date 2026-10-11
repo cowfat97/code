@@ -17,4 +17,4 @@ CLI 和 Web 都通过相同编排入口记录监控。环境变量应在进程�
 
 SDK 使用后台批量上传并在进程正常退出时关闭导出器。查看失败请求时，对应失败阶段和根 span 会标记异常；后续阶段不会执行。
 
-SDK 接入依据：[Langfuse 官方 Python SDK 文档](https://langfuse.com/docs/observability/sdk/overview)。本项目使用 SDK v3，服务端需为兼容的 Langfuse v3 部署。
+SDK 接入依据：[Langfuse 官方 Python SDK 文档](https://langfuse.com/docs/observability/sdk/overview)。本项目使用 SDK v4（>=4.7,<5），兼容当前 Langfuse v4 events_only 部署。
