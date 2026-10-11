@@ -159,7 +159,7 @@ vllm serve warshanks/Huihui-Qwen3-14B-abliterated-v2-AWQ \
 ```yaml
 predict:
   backend: vllm
-  base_url: http://127.0.0.1:8000/v1
+  base_url: http://192.168.1.177:8000/v1
   model: abl-14b             # 服务端 --served-model-name；挂 LoRA 时填 --lora-modules 的名字
   api_key: EMPTY
 ```
@@ -174,7 +174,7 @@ predict:
 | 两个环境变量 | 本机基线必须带 `VLLM_USE_V2_MODEL_RUNNER=0`（UVA 不可用）与 `VLLM_USE_FLASHINFER_SAMPLER=0`（缺 nvcc，避开采样器 JIT） |
 | 端口 | vLLM 用 **8000**，`Qwen/web/controller.py` 用 **8001**，别混 |
 | 合并后部署 | 开 `finetune.merge_on_save: true` 导出完整权重后，直接 `vllm serve <merged 目录>`，不再需要 `--enable-lora` |
-| 健康检查 | `curl.exe --max-time 10 -f http://127.0.0.1:8000/health`，`/v1/models` 里能看到 `abl-14b` 才算就绪 |
+| 健康检查 | `curl.exe --max-time 10 -f http://192.168.1.177:8000/health`，`/v1/models` 里能看到 `abl-14b` 才算就绪 |
 | 两套环境 | Windows `Qwen\.venv`（训练/客户端）与 WSL `~/vllm-env`（服务端）互相独立，不能混用 |
 | 启动纪律 | 沿用该 skill 的约定：只给命令时不启动进程；要代启动时先做只读状态检查，占用端口时不擅自中断别的服务 |
 

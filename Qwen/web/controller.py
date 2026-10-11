@@ -5,7 +5,7 @@
 # 启动（两种方式等价）：
 #   python controller.py          ← 在 web 目录运行，不在本进程加载模型
 #   uvicorn controller:app --host 127.0.0.1 --port 8001
-# 先启动 vLLM 服务（默认 http://127.0.0.1:8000/v1），可通过 VLLM_BASE_URL 配置。
+# 先启动 vLLM 服务（默认 http://192.168.1.177:8000/v1），可通过 VLLM_BASE_URL 配置。
 # 验证：
 #   curl -X POST http://127.0.0.1:8001/chat -H "Content-Type: application/json" -d '{"message": "你好"}'
 import logging

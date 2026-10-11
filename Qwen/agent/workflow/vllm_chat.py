@@ -1,7 +1,7 @@
 """vLLM HTTP 聊天后端；通过独立服务推理，不在本进程加载模型。
 
 运行：python quick_start.py
-配置：VLLM_BASE_URL（默认 http://127.0.0.1:8000/v1）、VLLM_MODEL、
+配置：VLLM_BASE_URL（默认 http://192.168.1.177:8000/v1）、VLLM_MODEL、
 VLLM_API_KEY（可选）、VLLM_TIMEOUT（秒，默认 120）。
 服务需提前启动；会话状态保存在 session_memory 的进程内单会话记忆中。
 """
