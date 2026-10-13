@@ -1,5 +1,7 @@
 """精确四则运算和一元一次方程：AST 白名单 + Fraction，无 eval。"""
 import ast
+import io
+import tokenize
 from fractions import Fraction
 
 
@@ -9,13 +11,54 @@ def bounded(value):
     return value
 
 
+def translate_percent(expression):
+    """只转译合法算式中的后缀百分号，保留原 token 边界检查。"""
+    # 先以等宽空格移除后缀，检查原算式的词法边界和运算结构。
+    # 不允许转译把 1 0%、换行或隐式乘法等非法原文拼成合法算式。
+    if "\\" in expression:
+        raise ValueError("表达式包含不支持的符号")
+    ast.parse(expression.replace("%", " "), mode="eval")
+    output, openings = [], []
+    operand_start = None
+    previous = None
+    for token in tokenize.generate_tokens(io.StringIO(expression).readline):
+        kind, value = token.type, token.string
+        if kind in (tokenize.ENDMARKER, tokenize.NEWLINE, tokenize.NL):
+            continue
+        if kind == tokenize.NUMBER or (kind == tokenize.NAME and value == "x"):
+            operand_start = len(output)
+            output.append(value)
+            previous = "operand"
+        elif kind == tokenize.OP and value == "(":
+            openings.append(len(output))
+            output.append(value)
+            previous = "open"
+        elif kind == tokenize.OP and value == ")":
+            operand_start = openings.pop()
+            output.append(value)
+            previous = "operand"
+        elif kind == tokenize.OP and value == "%":
+            if previous != "operand" or operand_start is None:
+                raise ValueError("百分号必须为数字、x 或括号的单个后缀")
+            output[operand_start:] = ["("] + output[operand_start:] + ["/", "100", ")"]
+            previous = "percent"
+        elif kind == tokenize.OP and value in ("+", "-", "*", "/"):
+            output.append(value)
+            previous = "operator"
+        else:
+            raise ValueError("表达式包含不支持的符号")
+    return " ".join(output)
+
+
 def parse(expression):
     if not isinstance(expression, str) or not expression.strip() or len(expression) > 256:
         raise ValueError("表达式必须为 1–256 字符")
     expression = expression.strip()
     try:
+        if "%" in expression:
+            expression = translate_percent(expression)
         tree = ast.parse(expression, mode="eval")
-    except (SyntaxError, RecursionError) as exc:
+    except (SyntaxError, RecursionError, tokenize.TokenError, IndentationError) as exc:
         raise ValueError("表达式语法错误") from exc
     if sum(1 for _ in ast.walk(tree)) > 100:
         raise ValueError("表达式过于复杂")
@@ -23,7 +66,7 @@ def parse(expression):
         if not isinstance(node, (ast.Expression, ast.BinOp, ast.UnaryOp, ast.Constant,
                                  ast.Name, ast.Load, ast.Add, ast.Sub, ast.Mult,
                                  ast.Div, ast.UAdd, ast.USub)):
-            raise ValueError("仅支持数字、x、括号和 + - * /，不支持函数或幂")
+            raise ValueError("仅支持数字、x、括号和 + - * / %，不支持函数或幂")
         if isinstance(node, ast.Name) and node.id != "x":
             raise ValueError("唯一支持的未知数为 x")
         if isinstance(node, ast.Constant):
@@ -67,7 +110,7 @@ def linear(node):
 
 
 def calculate(expression):
-    """接收纯算式或等式，返回精确分数结果。百分比请写成 /100。"""
+    """接收纯算式或等式，返回精确分数结果。百分号为数字、x 或括号的后缀除100。"""
     if not isinstance(expression, str) or len(expression) > 256:
         raise ValueError("表达式长度超限")
     if "=" in expression:
@@ -112,8 +155,8 @@ from .base import ToolSpec
 TOOL = ToolSpec(
     name="calculator",
     description=("精确四则运算和一元一次方程，计算任务应使用此工具。"
-                 "参数为纯算式或方程字符串，未知数只能为 x；支持数字、小数、括号、+ - * / 和一个等号。"
-                 "乘法显式写 *，百分比写 /100，例如 x*(1+20/100)*(1-20/100)=96。"
+                 "参数为纯算式或方程字符串，未知数只能为 x；支持数字、小数、括号、+ - * /、后缀 % 和一个等号。"
+                 "乘法显式写 *，百分号表示除100，例如 x*(1+20%)*(1-20%)=96。"
                  "不支持函数、幂、非线性、多未知数。自动核验计算/代入，但不证明列式符合题意。"),
     argument_type=Annotated[str, Field(min_length=1, max_length=256)],
     handler=calculate_verified, max_calls=2, require_success=True,
