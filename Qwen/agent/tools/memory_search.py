@@ -1,12 +1,23 @@
+# 设计文档：[记忆工具化改造](../../../../文档/Qwen/Agent/记忆工具化改造/design/详细设计.md)
 from typing import Annotated
 from pydantic import Field
-from agent.memory.session_memory import search
+from dataclasses import replace
 from .base import ToolSpec
 
 
-def lookup(keyword):
-    hits = search(keyword.strip())
+def lookup(keyword, history=()):
+    """纯检索已提交历史，只返回最近三条真实用户消息。"""
+    keyword = keyword.strip()
+    hits = [content for role, content in history
+            if role == "user" and not content.startswith("[观察]")
+            and "<think>" not in content and keyword in content]
     return {"matches": hits[-3:], "found": bool(hits)}
+
+
+def bind_history(history):
+    """冻结本轮历史，避免调用方后续修改列表或消息影响检索。"""
+    snapshot = tuple((message["role"], message["content"]) for message in history)
+    return replace(TOOL, handler=lambda keyword: lookup(keyword, snapshot))
 
 
 TOOL = ToolSpec(

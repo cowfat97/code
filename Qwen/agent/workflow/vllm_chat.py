@@ -1,9 +1,10 @@
+# 设计文档：[记忆工具化改造](../../../../文档/Qwen/Agent/记忆工具化改造/design/详细设计.md)
 """vLLM HTTP 聊天后端；通过独立服务推理，不在本进程加载模型。
 
 运行：python quick_start.py
 配置：VLLM_BASE_URL（默认 http://192.168.1.177:8000/v1）、VLLM_MODEL、
 VLLM_API_KEY（可选）、VLLM_TIMEOUT（秒，默认 120）。
-服务需提前启动；会话状态保存在 session_memory 的进程内单会话记忆中。
+服务需提前启动；会话状态保存在本流程的进程内单会话列表中。
 """
 
 import json
@@ -14,11 +15,11 @@ from openai import OpenAI, APIConnectionError, APIStatusError, APIResponseValida
 from agent.core.config import get_vllm_config
 from agent.core.prompts import REACT_SYSTEM_PROMPT
 from agent.core.schemas import VllmActionOutput
-from agent.memory.session_memory import as_list, inject, record, remember, stats
 from agent.tools.registry import action_schema, load_tools
 
 logger = logging.getLogger("vllm_chat")
 _chat_lock = threading.Lock()
+_messages = []  # 仅在整轮成功后提交，进程内单会话。
 
 
 def _generate(turns, tools, allowed_actions):
@@ -137,63 +138,62 @@ def chat(agent):
 
     同一后端的请求串行执行；本项目的全局记忆不支持多用户会话隔离。
     """
+    global _messages
     user_text = agent
     if not isinstance(user_text, str) or not user_text.strip():
         raise ValueError("消息必须是非空字符串")
     with _chat_lock:
-        previous = as_list()
-        try:
-            remember(user_text)
-            tools = load_tools()
-            calls = {name: 0 for name in tools}
+        turns = [dict(message) for message in _messages]
+        tools = load_tools(turns)
+        if not turns:
+            turns.append({"role": "system", "content": REACT_SYSTEM_PROMPT})
+        turns.append({"role": "user", "content": user_text})
+        calls = {name: 0 for name in tools}
+        pending = None
+        footers = {}
+        for step in range(1, 6):
+            logger.info("HTTP ReAct 第 %d/5 步", step)
+            allowed = ["answer"]
+            allowed.extend(name for name, spec in tools.items() if calls[name] < spec.max_calls)
+            if pending is not None:
+                allowed = [pending]
+            model_output = _generate(turns, tools, allowed_actions=allowed)
+            try:
+                output = VllmActionOutput.model_validate_json(model_output)
+            except ValueError as exc:
+                raise RuntimeError("模型行动格式无效，停止本轮工具流程") from exc
+            action, arg = output.action, output.argument
+            if action not in allowed:
+                raise RuntimeError("模型行动不符合当前工具流程")
+            turns.append({"role": "assistant", "content": model_output})
+            if action == "answer":
+                if not isinstance(arg, str) or not arg.strip():
+                    raise RuntimeError("模型返回空回答")
+                reply = arg.strip()
+                if footers:
+                    reply += "\n" + "\n".join(footers.values())
+                break
+            spec = tools[action]
+            calls[action] += 1
+            footers.pop(action, None)
+            try:
+                result = spec.execute(arg)
+            except (ValueError, ArithmeticError) as exc:
+                logger.warning("工具 %s 失败：%s", action, exc)
+                if spec.require_success:
+                    if calls[action] >= spec.max_calls:
+                        raise RuntimeError(f"工具 {action} 重试耗尽：{exc}") from exc
+                    pending = action
+                turns.append({"role": "user", "content": "[观察] " + json.dumps({"tool": action, "ok": False, "error": str(exc)}, ensure_ascii=False)})
+                continue
             pending = None
-            footers = {}
-            for step in range(1, 6):
-                logger.info("HTTP ReAct 第 %d/5 步", step)
-                turns = as_list()
-                allowed = ["answer"]
-                allowed.extend(name for name, spec in tools.items() if calls[name] < spec.max_calls)
-                if pending is not None:
-                    allowed = [pending]
-                model_output = _generate(turns, tools, allowed_actions=allowed)
-                try:
-                    output = VllmActionOutput.model_validate_json(model_output)
-                except ValueError as exc:
-                    raise RuntimeError("模型行动格式无效，停止本轮工具流程") from exc
-                action, arg = output.action, output.argument
-                if action not in allowed:
-                    raise RuntimeError("模型行动不符合当前工具流程")
-                turns.append({"role": "assistant", "content": model_output})
-                record(turns)
-                if action == "answer":
-                    if not isinstance(arg, str) or not arg.strip():
-                        raise RuntimeError("模型返回空回答")
-                    reply = arg.strip()
-                    if footers:
-                        reply += "\n" + "\n".join(footers.values())
-                    break
-                spec = tools[action]
-                calls[action] += 1
-                footers.pop(action, None)
-                try:
-                    result = spec.execute(arg)
-                except (ValueError, ArithmeticError) as exc:
-                    logger.warning("工具 %s 失败：%s", action, exc)
-                    if spec.require_success:
-                        if calls[action] >= spec.max_calls:
-                            raise RuntimeError(f"工具 {action} 重试耗尽：{exc}") from exc
-                        pending = action
-                    inject("[观察] " + json.dumps({"tool": action, "ok": False, "error": str(exc)}, ensure_ascii=False))
-                    continue
-                pending = None
-                if spec.result_footer:
-                    footers[action] = spec.result_footer(result)
-                logger.info("工具 %s 执行成功", action)
-                inject("[观察] " + json.dumps({"tool": action, "ok": True, "result": result}, ensure_ascii=False))
-            else:
-                raise RuntimeError("达到最大行动步数，未完成回答")
-            count, chars = stats()
-            return reply, count, chars
-        except Exception:
-            record(previous)
-            raise
+            if spec.result_footer:
+                footers[action] = spec.result_footer(result)
+            logger.info("工具 %s 执行成功", action)
+            turns.append({"role": "user", "content": "[观察] " + json.dumps({"tool": action, "ok": True, "result": result}, ensure_ascii=False)})
+        else:
+            raise RuntimeError("达到最大行动步数，未完成回答")
+        count = len(turns)
+        chars = sum(len(message["content"]) for message in turns)
+        _messages = turns
+        return reply, count, chars
