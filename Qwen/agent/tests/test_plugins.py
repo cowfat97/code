@@ -1,3 +1,4 @@
+# 设计文档：[限定目录文件读取](../../../../文档/Qwen/Agent/限定目录文件读取/design/详细设计.md)
 # 设计文档：[插件机制](../../../../文档/Qwen/Agent/插件机制/design/详细设计.md)
 import json
 import tempfile
@@ -33,7 +34,7 @@ class PluginTests(unittest.TestCase):
 
     def test_default_disabled(self):
         with patch.object(loader, 'import_module') as imported:
-            self.assertEqual(loader.load_plugins(PluginContext()), {})
+            self.assertEqual(loader.load_plugins(PluginContext(), config_path=self.config([self.text(False)])), {})
         imported.assert_not_called()
 
     def test_text_count_strict_unicode(self):
@@ -192,7 +193,7 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(contexts[0].history, (('user', '苹果'),))
         self.assertEqual(tools['text__history'].execute('x'), (('user', '苹果'),))
         self.assertEqual(tools['memory_search'].execute('苹果')['matches'], ['苹果'])
-        self.assertEqual(set(load_tools()), {'calculator', 'memory_search'})
+        self.assertEqual(set(load_tools()), {'calculator', 'memory_search', 'files__read_text'})
         for message in [{'role': 1, 'content': 'x'}, {'role': 'user', 'content': []}, {}]:
             with self.assertRaises(ValueError): load_tools([message])
 

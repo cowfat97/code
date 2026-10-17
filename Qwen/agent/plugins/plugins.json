@@ -1,5 +1,22 @@
 {
   "schema_version": 1,
-  "metadata": {"design_document": "../../../../文档/Qwen/Agent/插件机制/design/详细设计.md"},
-  "plugins": [{"id": "text", "module": "agent.plugins.text.plugin", "enabled": false, "config": {}}]
+  "metadata": {
+    "design_document": "../../../../文档/Qwen/Agent/插件机制/design/详细设计.md"
+  },
+  "plugins": [
+    {
+      "id": "text",
+      "module": "agent.plugins.text.plugin",
+      "enabled": false,
+      "config": {}
+    },
+    {
+      "id": "files",
+      "module": "agent.plugins.files.plugin",
+      "enabled": true,
+      "config": {
+        "design_document": "../../../../文档/Qwen/Agent/限定目录文件读取/design/详细设计.md"
+      }
+    }
+  ]
 }
