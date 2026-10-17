@@ -1,0 +1,5 @@
+{
+  "schema_version": 1,
+  "metadata": {"design_document": "../../../../文档/Qwen/Agent/插件机制/design/详细设计.md"},
+  "plugins": [{"id": "text", "module": "agent.plugins.text.plugin", "enabled": false, "config": {}}]
+}
