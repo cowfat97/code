@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from agent.plugins.base import PluginContext
+from agent.entities import PluginContext
 from agent.plugins.files import plugin
 from agent.tools.registry import load_tools
 

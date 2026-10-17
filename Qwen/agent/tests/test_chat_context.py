@@ -7,12 +7,13 @@ from types import SimpleNamespace
 import unittest
 import tempfile
 from pathlib import Path
-from agent.plugins.base import PluginLoadError, PluginSpec
+from agent.plugins.base import PluginLoadError
+from agent.entities import PluginSpec
 from agent.plugins import loader
-from agent.tools.base import ToolSpec
+from agent.entities import ToolSpec
 from unittest.mock import patch
 
-from agent.workflow import vllm_chat as chat
+from agent.workflow import core_loop as chat
 from agent.tools.registry import load_tools
 
 

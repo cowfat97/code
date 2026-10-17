@@ -1,6 +1,5 @@
 # 设计文档：[插件机制](../../../../../文档/Qwen/Agent/插件机制/design/详细设计.md)
-from agent.plugins.base import PluginSpec
-from agent.tools.base import ToolSpec
+from agent.entities import PluginSpec, ToolSpec
 
 
 def create_tools(context, config):

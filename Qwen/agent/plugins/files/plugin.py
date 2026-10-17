@@ -3,22 +3,14 @@ import os
 from pathlib import Path
 import stat
 
-from pydantic import BaseModel, ConfigDict, Field
-from agent.plugins.base import PluginSpec
-from agent.tools.base import ToolSpec
+from agent.entities import ReadTextArguments, PluginSpec
+from agent.entities import ToolSpec
 
 ROOT = Path(__file__).resolve().parents[2]
 MAX_BYTES = 64 * 1024
 MAX_RESULT_CHARS = 16000
 # Keep the native function identity for capability checks even when tests wrap open.
 _NATIVE_OPEN = os.open
-
-
-class ReadTextArguments(BaseModel):
-    model_config = ConfigDict(extra='forbid', strict=True)
-    path: str = Field(min_length=1)
-    start_line: int = Field(default=1, ge=1)
-    line_count: int = Field(default=200, ge=1, le=200)
 
 
 def _components(path):

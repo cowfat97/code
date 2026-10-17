@@ -5,8 +5,8 @@ import re
 from importlib import import_module
 from pathlib import Path
 import os
-from .base import PluginLoadError, PluginSpec
-from agent.tools.base import ToolSpec
+from .base import PluginLoadError
+from agent.entities import PluginSpec, ToolSpec
 
 DEFAULT_CONFIG_PATH = Path(__file__).with_name('plugins.json')
 QWEN_ROOT = Path(__file__).resolve().parents[2]

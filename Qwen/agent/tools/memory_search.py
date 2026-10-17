@@ -2,7 +2,7 @@
 from typing import Annotated
 from pydantic import Field
 from dataclasses import replace
-from .base import ToolSpec
+from agent.entities import ToolSpec
 
 
 def lookup(keyword, history=()):

@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 # 项目包在上一级目录；兼容直接从 web 目录启动 controller.py。
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from agent.core.logging import setup_logging
+from agent.common.logging import setup_logging
 
 setup_logging()
 from agent.workflow.chat_workflow import orchestrate_chat

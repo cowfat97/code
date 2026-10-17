@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
-from agent.tools.base import ToolSpec
+from agent.entities import ToolSpec
 from agent.tools.registry import action_schema, load_tools
 
 

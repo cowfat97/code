@@ -1,5 +1,7 @@
 # 设计文档：[记忆工具化改造](../../../../文档/Qwen/Agent/记忆工具化改造/design/详细设计.md)
-"""vLLM HTTP 聊天后端；通过独立服务推理，不在本进程加载模型。
+"""核心 Agent 循环：生成行动、执行工具并在整轮成功后提交会话。
+
+通过 vLLM 的 OpenAI 兼容 HTTP 接口推理，不在本进程加载模型。
 
 运行：python quick_start.py
 配置：VLLM_BASE_URL（默认 http://192.168.1.177:8000/v1）、VLLM_MODEL、
@@ -12,18 +14,22 @@ import logging
 import threading
 from openai import OpenAI, APIConnectionError, APIStatusError, APIResponseValidationError
 
-from agent.core.config import get_vllm_config
-from agent.core.prompts import REACT_SYSTEM_PROMPT
-from agent.core.schemas import VllmActionOutput
+from agent.common.config import get_vllm_config
+from agent.common.prompts import REACT_SYSTEM_PROMPT
+from agent.entities import VllmActionOutput
 from agent.tools.registry import action_schema, load_tools
 
-logger = logging.getLogger("vllm_chat")
+logger = logging.getLogger("core_loop")
 _chat_lock = threading.Lock()
 _messages = []  # 仅在整轮成功后提交，进程内单会话。
 
 
 def _generate(turns, tools, allowed_actions):
-    """调用 OpenAI 兼容接口，用 JSON Schema 约束行动输出。"""
+    """根据本轮允许的行动生成一个完整 JSON 字符串。
+
+    turns 为历史副本，tools 为本轮工具快照，allowed_actions 限制可选行动。
+    这里负责网络响应和完整性检查；行动解析与工具调度由 chat 负责。
+    """
     config = get_vllm_config()
     schema = action_schema(tools, allowed_actions)
     definitions = [tools[name].definition() for name in allowed_actions if name != "answer"]
@@ -48,7 +54,7 @@ def _generate(turns, tools, allowed_actions):
         # 1 表示不进行温度缩放，不代表“100% 随机”。
         # 常用参考（不是硬性边界或质量保证）：
         #   0       ：分类、抽取等偏向稳定选择的任务。
-        #   0.1–0.3 ：规则执行、工具选择、严谨问答；当前使用 0.3。
+        #   0.1–0.3 ：规则执行、工具选择、严谨问答；当前配置使用 0。
         #   0.4–0.7 ：普通聊天、解释、改写。
         #   0.8–1.0 ：创意文案、故事、多方案生成。
         #   >1.0    ：随机性更强，也更容易跑题或出错，谨慎使用。
@@ -143,14 +149,16 @@ def chat(agent):
     if not isinstance(user_text, str) or not user_text.strip():
         raise ValueError("消息必须是非空字符串")
     with _chat_lock:
+        # 先构造工作副本，模型、工具或附注生成失败时不提交半轮历史。
         turns = [dict(message) for message in _messages]
+        # 插件只接收此前已提交的历史；当前用户消息稍后才加入工作副本。
         tools = load_tools(turns)
         if not turns:
             turns.append({"role": "system", "content": REACT_SYSTEM_PROMPT})
         turns.append({"role": "user", "content": user_text})
         calls = {name: 0 for name in tools}
-        pending = None
-        footers = {}
+        pending = None  # 必须成功的工具失败后，下一步只允许重试该工具。
+        footers = {}  # 按工具保存最新成功结果的回答附注，避免重复追加。
         for step in range(1, 6):
             logger.info("HTTP ReAct 第 %d/5 步", step)
             allowed = ["answer"]
@@ -174,6 +182,7 @@ def chat(agent):
                     reply += "\n" + "\n".join(footers.values())
                 break
             spec = tools[action]
+            # 在执行前计数，参数校验和工具执行失败也会消耗调用额度。
             calls[action] += 1
             footers.pop(action, None)
             try:
@@ -193,6 +202,7 @@ def chat(agent):
             turns.append({"role": "user", "content": "[观察] " + json.dumps({"tool": action, "ok": True, "result": result}, ensure_ascii=False)})
         else:
             raise RuntimeError("达到最大行动步数，未完成回答")
+        # 仅最终回答成功后提交整轮；统计包含系统消息、行动和工具观察。
         count = len(turns)
         chars = sum(len(message["content"]) for message in turns)
         _messages = turns

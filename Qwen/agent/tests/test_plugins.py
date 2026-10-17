@@ -6,7 +6,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-from agent.plugins.base import PluginContext
+from agent.entities import PluginContext
 from agent.plugins import loader
 
 
@@ -105,8 +105,8 @@ class PluginTests(unittest.TestCase):
     def test_declarations_factories_and_tools(self):
         from dataclasses import replace
         from types import SimpleNamespace
-        from agent.plugins.base import PluginSpec, PluginLoadError
-        from agent.tools.base import ToolSpec
+        from agent.plugins.base import PluginLoadError
+        from agent.entities import PluginSpec, ToolSpec
         good = ToolSpec('text__count', 'description', str, lambda value: value)
         make = lambda tools: PluginSpec('text', 1, lambda context, config: tools)
         self.config([self.text()])
@@ -144,8 +144,8 @@ class PluginTests(unittest.TestCase):
     def test_error_chains_and_no_handler_execution(self):
         from types import SimpleNamespace
         from unittest.mock import Mock
-        from agent.plugins.base import PluginSpec, PluginLoadError
-        from agent.tools.base import ToolSpec
+        from agent.plugins.base import PluginLoadError
+        from agent.entities import PluginSpec, ToolSpec
         self.config([self.text()])
         for stage in ['导入', '工厂']:
             error = RuntimeError('specific failure')
@@ -176,8 +176,7 @@ class PluginTests(unittest.TestCase):
     def test_registry_snapshot_and_config_forwarding(self):
         from dataclasses import FrozenInstanceError
         from types import SimpleNamespace
-        from agent.plugins.base import PluginSpec
-        from agent.tools.base import ToolSpec
+        from agent.entities import PluginSpec, ToolSpec
         from agent.tools.registry import load_tools
         history = [{'role': 'user', 'content': '苹果'}]
         contexts = []
@@ -200,8 +199,7 @@ class PluginTests(unittest.TestCase):
     def test_two_factories_share_immutable_round_snapshot(self):
         from dataclasses import FrozenInstanceError
         from types import SimpleNamespace
-        from agent.plugins.base import PluginSpec
-        from agent.tools.base import ToolSpec
+        from agent.entities import PluginSpec, ToolSpec
         from agent.tools.registry import load_tools
         source = [{'role': 'user', 'content': 'original'}]
         seen = []

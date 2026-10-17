@@ -150,7 +150,7 @@ def result_footer(result):
 
 from typing import Annotated
 from pydantic import Field
-from .base import ToolSpec
+from agent.entities import ToolSpec
 
 TOOL = ToolSpec(
     name="calculator",

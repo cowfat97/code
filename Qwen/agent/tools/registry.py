@@ -2,7 +2,7 @@
 # 设计文档：[记忆工具化改造](../../../../文档/Qwen/Agent/记忆工具化改造/design/详细设计.md)
 """装配内置工具与可信本地插件，每轮绑定独立历史快照。"""
 from importlib import import_module
-from agent.plugins.base import PluginContext
+from agent.entities import PluginContext
 from agent.plugins.loader import load_plugins
 
 TOOL_MODULES = (
