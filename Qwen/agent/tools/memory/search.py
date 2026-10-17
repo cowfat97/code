@@ -1,4 +1,4 @@
-# 设计文档：[记忆工具化改造](../../../../文档/Qwen/Agent/记忆工具化改造/design/详细设计.md)
+# 设计文档：[记忆工具化改造](../../../../../文档/Qwen/Agent/记忆工具化改造/design/详细设计.md)
 from typing import Annotated
 from pydantic import Field
 from dataclasses import replace

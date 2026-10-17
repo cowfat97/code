@@ -1,9 +1,9 @@
 """运行：python -m unittest tests.test_tools"""
 import unittest
 from unittest.mock import patch
-from agent.tools.calculator import calculate, calculate_verified, result_footer, TOOL, parse, bounded
+from agent.tools.math.calculator import calculate, calculate_verified, result_footer, TOOL, parse, bounded
 from fractions import Fraction
-from agent.tools.verifier import verify
+from agent.tools.math.verifier import verify
 
 
 class MathToolsTests(unittest.TestCase):
@@ -49,7 +49,7 @@ class MathToolsTests(unittest.TestCase):
         self.assertIn(expression, result_footer(result))
         self.assertEqual(TOOL.name, "calculator")
         self.assertIn("%", TOOL.description)
-        with patch("agent.tools.verifier.verify", return_value={"valid": False}):
+        with patch("agent.tools.math.verifier.verify", return_value={"valid": False}):
             with self.assertRaises(ValueError):
                 calculate_verified("200*10%")
 

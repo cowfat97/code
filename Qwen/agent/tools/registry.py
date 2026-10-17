@@ -6,8 +6,8 @@ from agent.entities import PluginContext
 from agent.plugins.loader import load_plugins
 
 TOOL_MODULES = (
-    "agent.tools.calculator",
-    "agent.tools.memory_search",
+    "agent.tools.math.calculator",
+    "agent.tools.memory.search",
 )
 
 

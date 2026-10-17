@@ -5,7 +5,7 @@ import importlib.util
 from pathlib import Path
 import unittest
 
-from agent.tools import memory_search
+from agent.tools.memory import search as memory_search
 from agent.tools.registry import load_tools
 
 
