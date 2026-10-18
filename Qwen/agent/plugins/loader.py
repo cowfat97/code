@@ -37,7 +37,7 @@ def _read_config(path):
     data = json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=_object,
                       parse_constant=_reject_constant)
     json.dumps(data, allow_nan=False)
-    if not isinstance(data, dict) or not {'schema_version', 'plugins'} <= data.keys() or data.keys() - {'schema_version', 'plugins', 'metadata'}:
+    if not isinstance(data, dict) or not {'schema_version', 'plugins'} <= data.keys() or data.keys() - {'schema_version', 'plugins', 'metadata', 'hook_plugins'}:
         raise ValueError('顶层字段无效')
     if type(data['schema_version']) is not int or data['schema_version'] != 1:
         raise ValueError('schema_version必须为整数1')
@@ -47,8 +47,11 @@ def _read_config(path):
             raise ValueError('metadata.design_document必须为非空字符串')
     if not isinstance(data['plugins'], list):
         raise ValueError('plugins必须为数组')
+    hooks = data.get('hook_plugins', [])
+    if not isinstance(hooks, list):
+        raise ValueError('hook_plugins必须为数组')
     ids = set()
-    for index, entry in enumerate(data['plugins']):
+    for index, entry in enumerate(data['plugins'] + hooks):
         label = f'plugins[{index}]'
         if not isinstance(entry, dict) or set(entry) != {'id', 'module', 'enabled', 'config'}:
             raise ValueError(label + '字段无效')
@@ -61,10 +64,11 @@ def _read_config(path):
             raise ValueError(label + '.module无效')
         if type(entry['enabled']) is not bool or not isinstance(entry['config'], dict):
             raise ValueError(label + '.enabled/config类型无效')
-    return data['plugins']
+    data.setdefault('hook_plugins', [])
+    return data
 
 
-def load_plugins(context, *, config_path=None, reserved_names=()):
+def read_plugin_config(*, config_path=None):
     selected = config_path if config_path is not None else os.environ.get('QWEN_PLUGINS_CONFIG')
     path = DEFAULT_CONFIG_PATH
     try:
@@ -78,10 +82,16 @@ def load_plugins(context, *, config_path=None, reserved_names=()):
             entries = _read_config(path)
         except FileNotFoundError:
             if selected is None:
-                return {}
+                return path, {'plugins': [], 'hook_plugins': []}
             raise
     except Exception as exc:
         raise _error('配置', path, '-', str(exc)) from exc
+    return path, entries
+
+
+def load_plugins(context, *, config_path=None, reserved_names=()):
+    path, config = read_plugin_config(config_path=config_path)
+    entries = config['plugins']
     tools = {}
     reserved = {'answer', *reserved_names}
     for entry in entries:

@@ -2,6 +2,7 @@
 
 from agent.common.logging import setup_logging
 from agent.core.workflow.chat_workflow import orchestrate_chat
+from agent.plugins.hooks_loader import load_hook_runtime
 
 
 def main():
@@ -13,7 +14,7 @@ def main():
             user_text = input("你: ")
             if user_text.strip().lower() in {"quit", "exit"}:
                 break
-            reply, count, chars = orchestrate_chat(user_text)
+            reply, count, chars = orchestrate_chat(user_text, runtime=load_hook_runtime())
             print(f"模型: {reply}\n[记忆状态] {count} 条消息，共 {chars} 字符")
         except (EOFError, KeyboardInterrupt):
             break

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Callable, Mapping, Sequence
 
 from ..tools import ToolSpec
+from ..hooks import HookSpec
 
 
 @dataclass(frozen=True)
@@ -22,3 +23,11 @@ class PluginSpec:
     api_version: int  # 插件协议版本；当前加载器只接受整数 1。
     # 工厂接收本轮上下文和插件配置，返回供该轮使用的工具定义。
     create_tools: Callable[[PluginContext, Mapping[str, object]], Sequence[ToolSpec]]
+
+@dataclass(frozen=True)
+class HookPluginSpec:
+    """外围观察插件，不产生模型可调用工具。"""
+
+    id: str
+    api_version: int
+    create_hooks: Callable[[Mapping[str, object]], Sequence["HookSpec"]]

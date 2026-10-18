@@ -3,9 +3,9 @@
 from .config import VllmConfig
 from .llm import VllmActionOutput
 from .tools import ReadTextArguments, ToolSpec
-from .plugins import PluginContext, PluginSpec
+from .plugins import PluginContext, PluginSpec, HookPluginSpec
 
 __all__ = [
     "VllmConfig", "VllmActionOutput", "ToolSpec",
-    "PluginContext", "PluginSpec", "ReadTextArguments",
+    "PluginContext", "PluginSpec", "HookPluginSpec", "ReadTextArguments",
 ]

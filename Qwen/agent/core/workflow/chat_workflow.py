@@ -1,27 +1,23 @@
 """聊天请求的流程编排入口。"""
 
-from agent.infrastructure.observability import observe_stage, record_output
-
+from agent.core.hook_runtime import HookRuntime
 from .agent_builder import build_agent
 from .request_processor import process_request
 from .core_loop import chat
 
 
-def orchestrate_chat(user_text):
-    """依次处理输入、构建 Agent 并执行核心循环，返回回复和会话统计。
-
-    各阶段输出交给下一阶段，并在可用时写入嵌套监控跨度。
-    业务异常保持向上传播，由应用入口统一处理。
-    """
-    with observe_stage("orchestrate_chat", user_text) as workflow:
-        with observe_stage("process_request", user_text) as stage:
+def orchestrate_chat(user_text, *, runtime=None):
+    """核心只触发生命周期；入口装配可选的观察插件。"""
+    runtime = runtime if runtime is not None else HookRuntime()
+    with runtime.stage("orchestrate_chat", user_text) as workflow:
+        with runtime.stage("process_request", user_text) as stage:
             request = process_request(user_text)
-            record_output(stage, request)
-        with observe_stage("build_agent", request) as stage:
+            stage.set_output(request)
+        with runtime.stage("build_agent", request) as stage:
             agent = build_agent(request)
-            record_output(stage, agent)
-        with observe_stage("chat", agent) as stage:
+            stage.set_output(agent)
+        with runtime.stage("chat", agent) as stage:
             result = chat(agent)
-            record_output(stage, result)
-        record_output(workflow, result)
+            stage.set_output(result)
+        workflow.set_output(result)
         return result

@@ -22,6 +22,7 @@ from agent.common.logging import setup_logging
 
 setup_logging()
 from agent.core.workflow.chat_workflow import orchestrate_chat
+from agent.plugins.hooks_loader import load_hook_runtime
 
 logger = logging.getLogger("controller")
 
@@ -40,7 +41,7 @@ def chat_endpoint(req: ChatRequest):
     # 内部流式接收，当前接口仍返回完整 JSON 回复。
     start = time.time()
     logger.info("收到请求：%s…", req.message[:50])
-    reply, count, chars = orchestrate_chat(req.message)
+    reply, count, chars = orchestrate_chat(req.message, runtime=load_hook_runtime())
     logger.info("回复 %d 字，耗时 %.1f 秒", len(reply), time.time() - start)
     return {"reply": reply, "count": count, "chars": chars}
 
