@@ -1,7 +1,7 @@
 """命令行聊天接口。"""
 
 from agent.common.logging import setup_logging
-from agent.workflow.chat_workflow import orchestrate_chat
+from agent.core.workflow.chat_workflow import orchestrate_chat
 
 
 def main():

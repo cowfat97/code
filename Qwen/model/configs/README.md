@@ -172,7 +172,7 @@ predict:
 | 量化基座不能训练 | AWQ / compressed-tensors 的 4bit 权重只用于服务；要训练需 bf16 权重（14B bf16 显存不够，走 QLoRA + bitsandbytes） |
 | WSL 路径换算 | Windows `C:\Workspace\code\model\runs\...` → WSL `/mnt/c/Workspace/code/model/runs/...` |
 | 两个环境变量 | 本机基线必须带 `VLLM_USE_V2_MODEL_RUNNER=0`（UVA 不可用）与 `VLLM_USE_FLASHINFER_SAMPLER=0`（缺 nvcc，避开采样器 JIT） |
-| 端口 | vLLM 用 **8000**，`Qwen/web/controller.py` 用 **8001**，别混 |
+| 端口 | vLLM 用 **8000**，`Qwen/agent/web/controller.py` 用 **8001**，别混 |
 | 合并后部署 | 开 `finetune.merge_on_save: true` 导出完整权重后，直接 `vllm serve <merged 目录>`，不再需要 `--enable-lora` |
 | 健康检查 | `curl.exe --max-time 10 -f http://192.168.1.177:8000/health`，`/v1/models` 里能看到 `abl-14b` 才算就绪 |
 | 两套环境 | Windows `Qwen\.venv`（训练/客户端）与 WSL `~/vllm-env`（服务端）互相独立，不能混用 |

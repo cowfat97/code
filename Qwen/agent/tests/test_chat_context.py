@@ -13,7 +13,7 @@ from agent.plugins import loader
 from agent.entities import ToolSpec
 from unittest.mock import patch
 
-from agent.workflow import core_loop as chat
+from agent.core.workflow import core_loop as chat
 from agent.tools.registry import load_tools
 
 

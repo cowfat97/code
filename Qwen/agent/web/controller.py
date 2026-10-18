@@ -3,8 +3,8 @@
 # 依赖在根 requirements.txt（统一管理，装最新）：
 #   cd ~/Desktop/学习/code/Qwen && ~/.local/bin/uv pip install -r requirements.txt --python ~/Desktop/workSpace/envs/python/llm/bin/python
 # 启动（两种方式等价）：
-#   python controller.py          ← 在 web 目录运行，不在本进程加载模型
-#   uvicorn controller:app --host 127.0.0.1 --port 8001
+#   python -m agent.web.controller  ← 在项目根目录运行，不在本进程加载模型
+#   uvicorn agent.web.controller:app --host 127.0.0.1 --port 8001
 # 先启动 vLLM 服务（默认 http://192.168.1.177:8000/v1），可通过 VLLM_BASE_URL 配置。
 # 验证：
 #   curl -X POST http://127.0.0.1:8001/chat -H "Content-Type: application/json" -d '{"message": "你好"}'
@@ -16,12 +16,12 @@ from pathlib import Path
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-# 项目包在上一级目录；兼容直接从 web 目录启动 controller.py。
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+# 项目根目录在上两级；兼容直接从 agent/web 目录启动 controller.py。
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from agent.common.logging import setup_logging
 
 setup_logging()
-from agent.workflow.chat_workflow import orchestrate_chat
+from agent.core.workflow.chat_workflow import orchestrate_chat
 
 logger = logging.getLogger("controller")
 

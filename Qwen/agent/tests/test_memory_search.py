@@ -58,9 +58,9 @@ class MemorySearchTests(unittest.TestCase):
                 if isinstance(node, ast.ImportFrom):
                     self.assertFalse((node.module or '').startswith('agent.memory'), str(path))
                     if 'tools' in path.parts:
-                        self.assertFalse((node.module or '').startswith('agent.workflow'), str(path))
+                        self.assertFalse((node.module or '').startswith('agent.core.workflow'), str(path))
                 elif isinstance(node, ast.Import):
                     for alias in node.names:
                         self.assertFalse(alias.name.startswith('agent.memory'), str(path))
                         if 'tools' in path.parts:
-                            self.assertFalse(alias.name.startswith('agent.workflow'), str(path))
+                            self.assertFalse(alias.name.startswith('agent.core.workflow'), str(path))

@@ -3,8 +3,8 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
-from agent.core import observability
-from agent.workflow import chat_workflow
+from agent.infrastructure import observability
+from agent.core.workflow import chat_workflow
 
 
 class RecordingClient:
