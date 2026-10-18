@@ -4,9 +4,9 @@
 通过 vLLM 的 OpenAI 兼容 HTTP 接口推理，不在本进程加载模型。
 
 运行：python quick_start.py
-配置：VLLM_BASE_URL（默认 http://192.168.1.177:8000/v1）、VLLM_MODEL、
+配置：VLLM_BASE_URL（默认 http://127.0.0.1:8000/v1）、VLLM_MODEL、
 VLLM_API_KEY（可选）、VLLM_TIMEOUT（秒，默认 120）。
-服务需提前启动；会话状态保存在本流程的进程内单会话列表中。
+服务需提前启动；历史由 PostgreSQL 保存，CLI 与 Web 共用同一份记忆。
 """
 
 import json
@@ -18,10 +18,11 @@ from agent.common.config import get_vllm_config
 from agent.common.prompts import REACT_SYSTEM_PROMPT
 from agent.entities import VllmActionOutput
 from agent.tools.registry import action_schema, load_tools
+from agent.infrastructure.memory_store import get_memory_store
 
 logger = logging.getLogger("core_loop")
 _chat_lock = threading.Lock()
-_messages = []  # 仅在整轮成功后提交，进程内单会话。
+
 
 
 def _generate(turns, tools, allowed_actions):
@@ -139,18 +140,19 @@ def _generate(turns, tools, allowed_actions):
     return content
 
 
-def chat(agent):
+def chat(agent, *, store=None):
     """执行请求的核心 Agent Loop，返回 (reply, count, chars)。失败时回滚本轮记忆。
 
-    同一后端的请求串行执行；本项目的全局记忆不支持多用户会话隔离。
+    同一进程的请求串行执行；全局唯一历史存 PG，成功提交后返回。
     """
-    global _messages
     user_text = agent
     if not isinstance(user_text, str) or not user_text.strip():
         raise ValueError("消息必须是非空字符串")
     with _chat_lock:
         # 先构造工作副本，模型、工具或附注生成失败时不提交半轮历史。
-        turns = [dict(message) for message in _messages]
+        store = store if store is not None else get_memory_store()
+        snapshot = store.load()
+        turns = [dict(message) for message in snapshot.messages]
         # 插件只接收此前已提交的历史；当前用户消息稍后才加入工作副本。
         tools = load_tools(turns)
         if not turns:
@@ -205,5 +207,5 @@ def chat(agent):
         # 仅最终回答成功后提交整轮；统计包含系统消息、行动和工具观察。
         count = len(turns)
         chars = sum(len(message["content"]) for message in turns)
-        _messages = turns
+        store.save(snapshot.revision, turns)
         return reply, count, chars

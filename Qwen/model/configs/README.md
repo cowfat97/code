@@ -139,7 +139,7 @@ vLLM 的等价直接命令如下；添加 LoRA 参数时以此为基线：
 source ~/vllm-env/bin/activate
 VLLM_USE_V2_MODEL_RUNNER=0 VLLM_USE_FLASHINFER_SAMPLER=0 \
 vllm serve warshanks/Huihui-Qwen3-14B-abliterated-v2-AWQ \
-  --served-model-name abl-14b \
+  --served-model-name qwen-local \
   --host 127.0.0.1 --port 8000 \
   --gpu-memory-utilization 0.93 --max-model-len 5632 \
   --generation-config vllm \
@@ -159,14 +159,14 @@ vllm serve warshanks/Huihui-Qwen3-14B-abliterated-v2-AWQ \
 ```yaml
 predict:
   backend: vllm
-  base_url: http://192.168.1.177:8000/v1
-  model: abl-14b             # 服务端 --served-model-name；挂 LoRA 时填 --lora-modules 的名字
+  base_url: http://127.0.0.1:8000/v1
+  model: qwen-local             # 服务端 --served-model-name；挂 LoRA 时填 --lora-modules 的名字
   api_key: EMPTY
 ```
 
 | 事项 | 说明 |
 | --- | --- |
-| 当前服务 | `warshanks/Huihui-Qwen3-14B-abliterated-v2-AWQ`（4bit 量化，约 9.4 GB），服务名 `abl-14b`，上下文 6144 |
+| 当前服务 | `warshanks/Huihui-Qwen3-14B-abliterated-v2-AWQ`（4bit 量化，约 9.4 GB），服务名 `qwen-local`，上下文 6144 |
 | 显存实测 | 权重 9.44 GiB + 峰值激活 2.48 GiB + CUDA 图 0.67 GiB；**开机可用显存只有 14.8 GiB**，所以 `--gpu-memory-utilization` 上限是 **0.93**（0.94 会被 vLLM 直接拒绝） |
 | 与 ComfyUI 冲突 | ComfyUI 跑 MiniMax H3 视频时会占满 16 GB 显存，**不能同时启动 vLLM**；先跑完视频并释放模型缓存 |
 | 量化基座不能训练 | AWQ / compressed-tensors 的 4bit 权重只用于服务；要训练需 bf16 权重（14B bf16 显存不够，走 QLoRA + bitsandbytes） |
@@ -174,7 +174,7 @@ predict:
 | 两个环境变量 | 本机基线必须带 `VLLM_USE_V2_MODEL_RUNNER=0`（UVA 不可用）与 `VLLM_USE_FLASHINFER_SAMPLER=0`（缺 nvcc，避开采样器 JIT） |
 | 端口 | vLLM 用 **8000**，`Qwen/agent/web/controller.py` 用 **8001**，别混 |
 | 合并后部署 | 开 `finetune.merge_on_save: true` 导出完整权重后，直接 `vllm serve <merged 目录>`，不再需要 `--enable-lora` |
-| 健康检查 | `curl.exe --max-time 10 -f http://192.168.1.177:8000/health`，`/v1/models` 里能看到 `abl-14b` 才算就绪 |
+| 健康检查 | `curl.exe --max-time 10 -f http://127.0.0.1:8000/health`，`/v1/models` 里能看到 `qwen-local` 才算就绪 |
 | 两套环境 | Windows `Qwen\.venv`（训练/客户端）与 WSL `~/vllm-env`（服务端）互相独立，不能混用 |
 | 启动纪律 | 沿用该 skill 的约定：只给命令时不启动进程；要代启动时先做只读状态检查，占用端口时不擅自中断别的服务 |
 

@@ -15,6 +15,7 @@ from unittest.mock import patch
 
 from agent.core.workflow import core_loop as chat
 from agent.tools.registry import load_tools
+from agent.tests.memory_store_stub import MemoryStoreStub
 
 
 def action(name='answer', argument='好的'):
@@ -23,14 +24,10 @@ def action(name='answer', argument='好的'):
 
 class ChatContextTests(unittest.TestCase):
     def setUp(self):
-        self.old = getattr(chat, '_messages', None)
-        chat._messages = []
-
-    def tearDown(self):
-        if self.old is None:
-            del chat._messages
-        else:
-            chat._messages = self.old
+        self.store = MemoryStoreStub()
+        factory = patch.object(chat, 'get_memory_store', return_value=self.store)
+        factory.start()
+        self.addCleanup(factory.stop)
 
     def run_chat(self, text, outputs):
         with patch.object(chat, '_generate', side_effect=outputs):
@@ -40,16 +37,16 @@ class ChatContextTests(unittest.TestCase):
         reply, count, chars = self.run_chat('苹果', [action()])
         self.assertEqual(reply, '好的')
         self.assertEqual(count, 3)
-        self.assertEqual(chars, sum(len(m['content']) for m in chat._messages))
+        self.assertEqual(chars, sum(len(m['content']) for m in self.store.messages))
         self.assertEqual(self.run_chat('再问', [action()])[1], 5)
-        self.assertEqual(sum(m['role'] == 'system' for m in chat._messages), 1)
-        self.assertEqual(chat._messages[0]['content'], chat.REACT_SYSTEM_PROMPT)
+        self.assertEqual(sum(m['role'] == 'system' for m in self.store.messages), 1)
+        self.assertEqual(self.store.messages[0]['content'], chat.REACT_SYSTEM_PROMPT)
 
     def test_current_excluded_previous_identical_retained(self):
         for expected in [[], ['苹果']]:
             seen = []
             def generate(turns, tools, allowed_actions):
-                self.assertEqual(chat._messages[-1]['role'] if chat._messages else None,
+                self.assertEqual(self.store.messages[-1]['role'] if self.store.messages else None,
                                  'assistant' if expected else None)
                 seen.append(copy.deepcopy(turns))
                 return action('memory_search', '苹果') if len(seen) == 1 else action()
@@ -66,14 +63,14 @@ class ChatContextTests(unittest.TestCase):
         for seeded in [False, True]:
             for outputs in failures:
                 with self.subTest(seeded=seeded, outputs=outputs):
-                    chat._messages = []
+                    self.store.messages = []
                     if seeded:
                         self.run_chat('已提交', [action()])
-                    before = copy.deepcopy(chat._messages)
+                    before = copy.deepcopy(self.store.messages)
                     with patch.object(chat, 'load_tools', return_value={'repeat': repeat}):
                         with self.assertRaises(RuntimeError):
                             self.run_chat('失败问题', outputs)
-                    self.assertEqual(chat._messages, before)
+                    self.assertEqual(self.store.messages, before)
 
     def test_handler_and_footer_exceptions_do_not_commit(self):
         for field in ['handler', 'result_footer']:
@@ -83,7 +80,7 @@ class ChatContextTests(unittest.TestCase):
             with patch.object(chat, 'load_tools', return_value={'memory_search': tool}):
                 with self.assertRaises(LookupError):
                     self.run_chat('失败', [action('memory_search', 'x')])
-            self.assertEqual(chat._messages, [])
+            self.assertEqual(self.store.messages, [])
 
     def test_calculator_footer_and_call_limit(self):
         seen = []
@@ -96,13 +93,13 @@ class ChatContextTests(unittest.TestCase):
         self.assertIn('calculator', seen[1])
         self.assertNotIn('calculator', seen[2])
         self.assertIn('1+1；2', reply)
-        self.assertIn('2000', chat._messages[3]['content'])
-        self.assertEqual(count, len(chat._messages))
-        self.assertEqual(chars, sum(len(m['content']) for m in chat._messages))
+        self.assertIn('2000', self.store.messages[3]['content'])
+        self.assertEqual(count, len(self.store.messages))
+        self.assertEqual(chars, sum(len(m['content']) for m in self.store.messages))
 
     def test_memory_call_limit_and_reset_after_failed_round(self):
         self.run_chat('苹果资料', [action()])
-        committed = copy.deepcopy(chat._messages)
+        committed = copy.deepcopy(self.store.messages)
         seen = []
 
         def repeat_memory(turns, tools, allowed_actions):
@@ -114,7 +111,7 @@ class ChatContextTests(unittest.TestCase):
                 chat.chat('重复调用')
         self.assertIn('memory_search', seen[0])
         self.assertNotIn('memory_search', seen[1])
-        self.assertEqual(chat._messages, committed)
+        self.assertEqual(self.store.messages, committed)
 
         for question in ['继续查找', '再次查找']:
             observations = []
@@ -159,7 +156,6 @@ class ChatContextTests(unittest.TestCase):
 
 
 class PluginChatTests(unittest.TestCase):
-    tearDown = ChatContextTests.tearDown
     run_chat = ChatContextTests.run_chat
     def setUp(self):
         ChatContextTests.setUp(self)
@@ -189,24 +185,24 @@ class PluginChatTests(unittest.TestCase):
             return action()
         with patch.object(chat, '_generate', side_effect=generate):
             reply, count, chars = chat.chat('计数')
-        self.assertEqual((reply, count, chars), ('好的', len(chat._messages), sum(len(m['content']) for m in chat._messages)))
+        self.assertEqual((reply, count, chars), ('好的', len(self.store.messages), sum(len(m['content']) for m in self.store.messages)))
         with patch.object(chat, '_generate', side_effect=lambda turns, tools, allowed_actions: self.assertNotIn('text__count', tools) or action()):
             chat.chat('下一轮')
-        before = copy.deepcopy(chat._messages)
+        before = copy.deepcopy(self.store.messages)
         with self.assertRaisesRegex(RuntimeError, '模型行动不符合'):
             self.run_chat('禁用', [action('text__count', 'x')])
-        self.assertEqual(chat._messages, before)
+        self.assertEqual(self.store.messages, before)
 
     def test_loading_failures_before_model_and_no_commit(self):
         self.run_chat('成功', [action()])
-        before = copy.deepcopy(chat._messages)
+        before = copy.deepcopy(self.store.messages)
         for raw in ['invalid', json.dumps({'schema_version': 1, 'plugins': [
             {'id': 'text', 'module': 'not_installed_xyz', 'enabled': True, 'config': {}}]})]:
             self.path.write_text(raw)
             with patch.object(chat, '_generate') as generate:
                 with self.assertRaises(PluginLoadError): chat.chat('失败')
             generate.assert_not_called()
-            self.assertEqual(chat._messages, before)
+            self.assertEqual(self.store.messages, before)
 
     def test_plugin_history_excludes_current_identical_input(self):
         contexts = []
@@ -246,7 +242,7 @@ class PluginChatTests(unittest.TestCase):
         self.assertNotIn('text__first', seen[2])
         self.assertIn('text__second', seen[2])
         self.assertNotIn('text__second', seen[3])
-        before = copy.deepcopy(chat._messages)
+        before = copy.deepcopy(self.store.messages)
         fail = lambda value: (_ for _ in ()).throw(ValueError('always fails'))
         for tool, outputs, error in [
             (replace(first, handler=fail), [action(first.name, 'x')]*2, RuntimeError),
@@ -254,7 +250,7 @@ class PluginChatTests(unittest.TestCase):
             (replace(first, handler=lambda v: (_ for _ in ()).throw(LookupError())), [action(first.name, 'x')], LookupError)]:
             with patch.object(loader, 'import_module', return_value=SimpleNamespace(PLUGIN=PluginSpec('text', 1, lambda c, p: [tool]))):
                 with self.assertRaises(error): self.run_chat('失败', outputs)
-            self.assertEqual(chat._messages, before)
+            self.assertEqual(self.store.messages, before)
         optional = replace(first, handler=fail, require_success=False)
         with patch.object(loader, 'import_module', return_value=SimpleNamespace(PLUGIN=PluginSpec('text', 1, lambda c, p: [optional]))):
             self.assertEqual(self.run_chat('可恢复', [action(first.name, 'x'), action()])[0], '好的')
@@ -280,19 +276,19 @@ class PluginChatTests(unittest.TestCase):
         self.assertIn('text__count', payload['messages'][0]['content'])
         branches = payload['response_format']['json_schema']['schema']['anyOf']
         self.assertTrue(any(b['properties']['action']['enum'] == ['text__count'] for b in branches))
-        self.assertEqual(chat._messages[0]['content'], chat.REACT_SYSTEM_PROMPT)
+        self.assertEqual(self.store.messages[0]['content'], chat.REACT_SYSTEM_PROMPT)
 
     def test_factory_failure_no_model_and_required_limit_rejects_repeated_action(self):
         self.run_chat('先成功', [action()])
-        before = copy.deepcopy(chat._messages)
+        before = copy.deepcopy(self.store.messages)
         def fail(context, config): raise RuntimeError('factory failure')
         with patch.object(loader, 'import_module', return_value=SimpleNamespace(PLUGIN=PluginSpec('text', 1, fail))), patch.object(chat, '_generate') as generate:
             with self.assertRaises(PluginLoadError): chat.chat('失败')
         generate.assert_not_called()
-        self.assertEqual(chat._messages, before)
+        self.assertEqual(self.store.messages, before)
         tools = [ToolSpec('text__a', 'a', str, lambda value: value),
                  ToolSpec('text__b', 'b', str, lambda value: value)]
         with patch.object(loader, 'import_module', return_value=SimpleNamespace(PLUGIN=PluginSpec('text', 1, lambda c, p: tools))):
             with self.assertRaisesRegex(RuntimeError, '模型行动不符合'):
                 self.run_chat('重复', [action('text__a', 'x'), action('text__b', 'y'), action('text__a', 'z')])
-        self.assertEqual(chat._messages, before)
+        self.assertEqual(self.store.messages, before)

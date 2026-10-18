@@ -6,7 +6,7 @@ from .request_processor import process_request
 from .core_loop import chat
 
 
-def orchestrate_chat(user_text, *, runtime=None):
+def orchestrate_chat(user_text, *, runtime=None, store=None):
     """核心只触发生命周期；入口装配可选的观察插件。"""
     runtime = runtime if runtime is not None else HookRuntime()
     with runtime.stage("orchestrate_chat", user_text) as workflow:
@@ -17,7 +17,7 @@ def orchestrate_chat(user_text, *, runtime=None):
             agent = build_agent(request)
             stage.set_output(agent)
         with runtime.stage("chat", agent) as stage:
-            result = chat(agent)
+            result = chat(agent, store=store)
             stage.set_output(result)
         workflow.set_output(result)
         return result
