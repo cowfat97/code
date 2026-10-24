@@ -2,6 +2,7 @@
 
 from .manager import TaskManager
 from .models import (
+    IntentMatch,
     TaskDefinition,
     TaskError,
     TaskValidationError,
@@ -13,6 +14,7 @@ from .models import (
 )
 
 __all__ = [
+    "IntentMatch",
     "TaskDefinition",
     "TaskError",
     "TaskManager",

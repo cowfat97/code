@@ -16,6 +16,7 @@ from jsonschema.exceptions import SchemaError
 
 from .loader import MAX_BYTES, check_json, parse_yaml
 from .models import (
+    IntentMatch,
     TaskDefinition,
     TaskError,
     TaskValidationError,
@@ -193,6 +194,46 @@ class TaskManager:
         )
         digest = hashlib.sha256(snapshot.encode()).hexdigest()
         return Template(template_id, defaults, schema, digest)
+
+    def recognize(self, text: str, *, fallback: str = "basic") -> IntentMatch:
+        """Match explicit keyword routes; ambiguous matches use the generic fallback."""
+        if not isinstance(text, str):
+            raise TypeError("Intent text must be a string")
+        self.load_template(fallback)
+        normalized = text.casefold()
+        candidates: list[tuple[tuple[int, int, int], str, tuple[str, ...]]] = []
+        for template_id in self.list_templates():
+            path = self.template_dir / template_id / "intent.json"
+            if not path.resolve().is_relative_to(self.template_dir):
+                raise TemplateError("Intent path escapes template directory")
+            if not path.exists():
+                continue
+            try:
+                route = json.loads(_read(path))
+            except (OSError, UnicodeError, ValueError) as exc:
+                raise TemplateError(f"Cannot load intent for {template_id}: {exc}") from exc
+            if (
+                not isinstance(route, dict)
+                or route.keys() - {"keywords", "priority"}
+                or not isinstance(route.get("keywords"), list)
+                or not route["keywords"]
+                or any(not isinstance(word, str) or not word.strip() for word in route["keywords"])
+                or type(route.get("priority", 0)) is not int
+            ):
+                raise TemplateError(f"Invalid intent configuration for {template_id}")
+            words = sorted({word.casefold() for word in route["keywords"]})
+            matched = tuple(word for word in words if word in normalized)
+            if matched:
+                score = (route.get("priority", 0), len(matched), sum(map(len, matched)))
+                candidates.append((score, template_id, matched))
+        if not candidates:
+            return IntentMatch(fallback, False, "unmatched")
+        best = max(score for score, _, _ in candidates)
+        winners = [candidate for candidate in candidates if candidate[0] == best]
+        if len(winners) != 1:
+            return IntentMatch(fallback, False, "ambiguous")
+        _, template_id, matched = winners[0]
+        return IntentMatch(template_id, True, "matched", matched)
 
     def parse_yaml(self, text: str) -> dict[str, Any]:
         return parse_yaml(text)

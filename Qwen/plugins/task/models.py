@@ -26,6 +26,14 @@ class ValidationResult:
 
 
 @dataclass(frozen=True)
+class IntentMatch:
+    template_id: str
+    matched: bool
+    reason: str
+    keywords: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class TaskDefinition:
     id: str
     template_id: str

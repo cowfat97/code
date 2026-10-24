@@ -109,7 +109,7 @@
   "description": "Paths are relative to the entry configuration file, or the constructor base.",
   "properties": {
     "skills_dir": {
-      "default": "../skill_library",
+      "default": "../skills/library",
       "minLength": 1,
       "title": "Skills Dir",
       "type": "string"
@@ -136,6 +136,18 @@
       "default": "meta.json",
       "minLength": 1,
       "title": "Meta File",
+      "type": "string"
+    },
+    "task_templates_dir": {
+      "default": "../task/templates",
+      "minLength": 1,
+      "title": "Task Templates Dir",
+      "type": "string"
+    },
+    "task_template": {
+      "default": "basic",
+      "minLength": 1,
+      "title": "Task Template",
       "type": "string"
     },
     "concurrency": {

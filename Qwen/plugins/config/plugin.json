@@ -1,5 +1,5 @@
 {
-  "skills_dir": "../skill_library",
+  "skills_dir": "../skills/library",
   "state_dir": "../state",
   "skills_file": "skills.json",
   "mcp_file": "mcp.json",
@@ -16,5 +16,7 @@
     "max_added_nodes": 3,
     "max_added_edges": 5,
     "rules": []
-  }
+  },
+  "task_templates_dir": "../task/templates",
+  "task_template": "basic"
 }

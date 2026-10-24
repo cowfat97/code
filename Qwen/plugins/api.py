@@ -8,18 +8,20 @@ import tomllib
 from collections.abc import Callable, Mapping
 from contextvars import ContextVar
 from copy import deepcopy
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from .contracts.providers import SkillVerifier
+from .graph.adapter import Payload, PluginAdapter
+from .graph.plugin import SkillGraphPlugin
+from .graph.recovery import PolicyRepairEngine, RepairPolicy, RepairStrategy
 from .meta.planner import LLMProvider, MetaPlanner
-from .skill_graph.adapter import Payload, PluginAdapter
-from .skill_graph.plugin import SkillGraphPlugin
-from .skill_graph.recovery import PolicyRepairEngine, RepairPolicy, RepairStrategy
 from .skills.configuration import SkillsConfig
 from .skills.registry import SkillRegistry
+from .task import TaskManager, ValidationIssue
 from .tools import local
 from .tools.registry import ToolRegistry
 
@@ -32,11 +34,13 @@ class PluginConfig(BaseModel):
     """Paths are relative to the entry configuration file, or the constructor base."""
 
     model_config = ConfigDict(extra="forbid", strict=True, frozen=True)
-    skills_dir: str = Field(default="../skill_library", min_length=1)
+    skills_dir: str = Field(default="../skills/library", min_length=1)
     state_dir: str = Field(default="../state", min_length=1)
     skills_file: str = Field(default="skills.json", min_length=1)
     mcp_file: str = Field(default="mcp.json", min_length=1)
     meta_file: str = Field(default="meta.json", min_length=1)
+    task_templates_dir: str = Field(default="../task/templates", min_length=1)
+    task_template: str = Field(default="basic", min_length=1)
     concurrency: int = Field(default=4, gt=0)
     retries: int = Field(default=0, ge=0)
     timeout: float = Field(default=30, gt=0, allow_inf_nan=False)
@@ -82,6 +86,7 @@ class Plugin:
             if config is None
             else PluginConfig.model_validate(config)
         )
+        self.tasks = TaskManager(self._path(self.config.task_templates_dir))
         self._provider = llm_provider
         self._functions = dict(functions or {})
         for name, fn in self._functions.items():
@@ -216,6 +221,69 @@ class Plugin:
             await asyncio.shield(task)
             raise
 
+    def _check_task(
+        self, document: dict[str, Any], *, planning: bool
+    ) -> tuple[dict[str, Any], dict[str, Any] | None]:
+        """Validate task data before planning; interaction remains owned by the host."""
+        allowed = {
+            "task", "goal", "initial_conditions", "context", "inputs", "proposal",
+            "order_hints", "task_data",
+        }
+        unknown = document.keys() - allowed
+        if unknown:
+            raise ValueError(f"Unknown task request fields: {sorted(unknown)}")
+        request = deepcopy(document)
+        if "task" in request and not isinstance(request["task"], str):
+            raise TypeError("task must be a string")
+        supplied = request.pop("task_data", None)
+        if supplied is not None and not isinstance(supplied, Mapping):
+            raise TypeError("task_data must be a mapping")
+        if "task_data" in document and supplied is None:
+            raise TypeError("task_data must be a mapping")
+        data = dict(supplied) if supplied is not None else {}
+        descriptions = [
+            request.get("task"), data.get("objective"), data.get("domain"), data.get("category")
+        ]
+        intent_text = "\n".join(value for value in descriptions if isinstance(value, str))
+        selection = self.tasks.recognize(intent_text, fallback=self.config.task_template)
+        template_id = selection.template_id
+        template = self.tasks.load_template(template_id)
+        declares_objective = "objective" in template.schema.get("properties", {})
+        if supplied is None and declares_objective:
+            if "task" in request:
+                data["objective"] = request["task"]
+            elif (
+                template_id == "basic"
+                and isinstance(request.get("goal"), list) and request["goal"]
+                and all(isinstance(goal, str) for goal in request["goal"])
+            ):
+                data["objective"] = "Achieve: " + ", ".join(request["goal"])
+        validation = self.tasks.validate(data, template_id=template_id)
+        issues = list(validation.issues)
+        definition = self.tasks.create(data, template_id=template_id) if validation.valid else None
+        # Only validated, default-merged data may supply the planning objective.
+        objective = (
+            definition.data.get("objective") if definition is not None
+            else data.get("objective", self.tasks.load_template(template_id).defaults.get("objective"))
+        )
+        description = request.get("task", objective)
+        if planning and (not isinstance(description, str) or not description.strip()):
+            issues.append(ValidationIssue("/task", "Provide a task description for planning", "required"))
+        if issues:
+            return request, {
+                "status": "needs_input",
+                "issues": [asdict(issue) for issue in issues],
+            }
+        assert definition is not None
+        if "task" not in request and isinstance(objective, str):
+            request["task"] = objective
+        if planning:
+            context = request.get("context", {})
+            if not isinstance(context, dict):
+                raise TypeError("context must be a mapping")
+            request["context"] = {**context, "task_data": definition.data}
+        return request, None
+
     async def invoke(self, operation: str, payload: Payload | None = None) -> dict[str, Any]:
         async with self._lock:
             if self._adapter is None or self._closing:
@@ -228,8 +296,14 @@ class Plugin:
 
             async def dispatch() -> dict[str, Any]:
                 _invocation.set(asyncio.current_task())
-                if operation in {"run", "prepare"}:
-                    request = document
+                if operation in {"run", "prepare", "plan"}:
+                    request, missing = self._check_task(
+                        document, planning=operation == "plan" or "goal" not in document
+                    )
+                    if missing is not None:
+                        return missing
+                    if operation == "plan":
+                        return await adapter.plan(request)
                     if "goal" not in request:
                         planned = await adapter.plan(request)
                         request = planned["request"]
