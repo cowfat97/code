@@ -1,0 +1,4 @@
+inputs: {}
+constraints: []
+output:
+  format: json
