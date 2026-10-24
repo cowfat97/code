@@ -1,0 +1,8 @@
+{
+  "mcp_servers": {
+    "pgmcp": {
+      "command": "@builtin/pgmcp",
+      "allowed_tools": ["query", "execute", "list_tables", "describe_table"]
+    }
+  }
+}

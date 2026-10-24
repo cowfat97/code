@@ -1,0 +1,8 @@
+{
+  "load_builtin": true,
+  "load_mcp": true,
+  "concurrency": 8,
+  "timeout": 30.0,
+  "mcp_file": "mcp.json",
+  "monitor_file": "../state/events.sqlite3"
+}
