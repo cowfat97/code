@@ -1,0 +1,8 @@
+{
+  "llm": null,
+  "timeout": 30.0,
+  "max_candidates": 100,
+  "max_steps": 64,
+  "max_content_chars": 2000,
+  "max_prompt_chars": 100000
+}

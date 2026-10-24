@@ -1,0 +1,113 @@
+{
+  "$defs": {
+    "MCPServerConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "transport": {
+          "default": "stdio",
+          "enum": [
+            "stdio",
+            "streamable_http",
+            "sse"
+          ],
+          "title": "Transport",
+          "type": "string"
+        },
+        "command": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Command"
+        },
+        "args": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Args",
+          "type": "array"
+        },
+        "env": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Env"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        },
+        "headers": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Headers",
+          "type": "object"
+        },
+        "connection_timeout": {
+          "default": 30.0,
+          "exclusiveMinimum": 0,
+          "title": "Connection Timeout",
+          "type": "number"
+        },
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "allowed_tools": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Allowed Tools"
+        }
+      },
+      "title": "MCPServerConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "mcp_servers": {
+      "additionalProperties": {
+        "$ref": "#/$defs/MCPServerConfig"
+      },
+      "title": "Mcp Servers",
+      "type": "object"
+    }
+  },
+  "title": "ToolsConfig",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

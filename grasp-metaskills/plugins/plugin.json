@@ -1,0 +1,11 @@
+{
+  "database": "../state/skills.db",
+  "skills_file": "skills.json",
+  "mcp_file": "mcp.json",
+  "meta_file": "meta.json",
+  "concurrency": 4,
+  "retries": 0,
+  "timeout": 30.0,
+  "discovery_mode": "keyword",
+  "repair_enabled": false
+}

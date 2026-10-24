@@ -1,0 +1,99 @@
+{
+  "upstream_commit": "dcd3fb55cabb438dc200f9b7c784ca14c08135ce",
+  "license": "MIT, Copyright (c) 2026 Jeffrey Emanuel; preserve upstream LICENSE notice",
+  "verification": {
+    "rust_tests_executed": false,
+    "sqlite_migrations_executed": true,
+    "sqlite_user_version": 12,
+    "sqlite_integrity": "ok",
+    "sqlite_table_count": 38
+  },
+  "git_sample": {
+    "source": "src/storage/git.rs:488-511 sample_spec; test_skill_write_read",
+    "spec": {
+      "format_version": "1.0",
+      "metadata": {
+        "id": "sample-skill",
+        "name": "Sample Skill",
+        "version": "1.0.0",
+        "description": "Sample description",
+        "tags": [],
+        "requires": [],
+        "provides": [],
+        "platforms": [],
+        "author": null,
+        "license": null
+      },
+      "sections": [
+        {
+          "id": "intro",
+          "title": "Introduction",
+          "blocks": [
+            {
+              "id": "block-1",
+              "block_type": "text",
+              "content": "Hello"
+            }
+          ]
+        }
+      ]
+    },
+    "expected_markdown": "# Sample Skill\n\nSample description\n\n## Introduction\n\nHello\n\n",
+    "expected_hash": "11557da7415356883438c04d9eb0026ea0e85de63fdc3be5fb52fa96ed3b4714",
+    "hash_status": "Python serialization reproduction of tx.rs algorithm, not an executed Rust oracle"
+  },
+  "tx_sample": {
+    "source": "src/storage/tx.rs:900-1019 sample_skill/test_successful_2pc",
+    "id": "2pc-test",
+    "metadata_name": "Test Skill 2pc-test",
+    "version": "1.0.0",
+    "description": "A test skill",
+    "sections": [
+      {
+        "id": "intro",
+        "title": "Introduction",
+        "blocks": []
+      }
+    ],
+    "expected": {
+      "git_read_id": "2pc-test",
+      "sqlite_row_exists": true,
+      "incomplete_transactions": 0,
+      "active_tx_files": 0
+    }
+  },
+  "migration_order": [
+    "001_initial_schema.sql",
+    "002_add_fts.sql",
+    "003_add_vectors.sql",
+    "004_add_acip_quarantine.sql",
+    "005_add_acip_quarantine_reviews.sql",
+    "006_add_embedding_metadata.sql",
+    "007_add_session_quality.sql",
+    "008_add_skill_experiment_events.sql",
+    "009_add_skill_feedback.sql",
+    "010_add_resolution_cache.sql",
+    "011_add_user_preferences.sql",
+    "012_add_resolution_warnings.sql"
+  ],
+  "recovery_source_cases": [
+    {
+      "source": "src/storage/tx.rs:702-744",
+      "phase": "prepare",
+      "expected_action": "rollback"
+    },
+    {
+      "source": "src/storage/tx.rs:702-744",
+      "phase": "pending",
+      "head_contains_id": true,
+      "upstream_expected_action": "complete",
+      "port_extension": "requires matching spec hash, recorded commit ancestry and matching HEAD content"
+    },
+    {
+      "source": "src/storage/tx.rs:702-744",
+      "phase": "pending",
+      "head_contains_id": false,
+      "expected_action": "rollback"
+    }
+  ]
+}

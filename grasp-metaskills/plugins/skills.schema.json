@@ -1,0 +1,159 @@
+{
+  "$defs": {
+    "SkillContract": {
+      "additionalProperties": false,
+      "properties": {
+        "params": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Params",
+          "type": "array"
+        },
+        "preconditions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Preconditions",
+          "type": "array"
+        },
+        "effects": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Effects",
+          "type": "array"
+        },
+        "input_schema": {
+          "additionalProperties": true,
+          "title": "Input Schema",
+          "type": "object"
+        },
+        "output_schema": {
+          "additionalProperties": true,
+          "title": "Output Schema",
+          "type": "object"
+        },
+        "validators": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Validators",
+          "type": "array"
+        }
+      },
+      "title": "SkillContract",
+      "type": "object"
+    },
+    "SkillSource": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "recursive": {
+          "default": true,
+          "title": "Recursive",
+          "type": "boolean"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "contract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SkillContract"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tool": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "SkillSource",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "skills": {
+      "items": {
+        "$ref": "#/$defs/SkillSource"
+      },
+      "title": "Skills",
+      "type": "array"
+    }
+  },
+  "title": "SkillsConfig",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

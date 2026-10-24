@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "grasp-metaskills"
+version = "0.1.0"
+description = "Source-derived GraSP graphs integrated with the MIT MetaSkills core in Python"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE", "NOTICE", "licenses/*.txt"]
+dependencies = ["pydantic>=2.11,<3", "jsonschema>=4.23,<5", "packaging>=24", "PyYAML>=6,<7", "httpx>=0.27,<1"]
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.30,<2"]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "hypothesis>=6", "ruff>=0.9", "mypy>=1.13", "types-jsonschema", "types-PyYAML"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = "--import-mode=importlib"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["plugins", "grasp_metaskills"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["plugins", "src/grasp_metaskills"]
+
+[tool.hatch.build.targets.sdist]
+include = ["plugins", "src", "tests", "examples", "docs", "LICENSE", "NOTICE", "licenses", "README.md", "pyproject.toml"]

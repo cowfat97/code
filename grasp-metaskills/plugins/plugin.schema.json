@@ -1,0 +1,67 @@
+{
+  "additionalProperties": false,
+  "description": "Paths are relative to the entry configuration file, or the constructor base.",
+  "properties": {
+    "database": {
+      "default": "skills.db",
+      "minLength": 1,
+      "title": "Database",
+      "type": "string"
+    },
+    "skills_file": {
+      "default": "skills.json",
+      "minLength": 1,
+      "title": "Skills File",
+      "type": "string"
+    },
+    "mcp_file": {
+      "default": "mcp.json",
+      "minLength": 1,
+      "title": "Mcp File",
+      "type": "string"
+    },
+    "meta_file": {
+      "default": "meta.json",
+      "minLength": 1,
+      "title": "Meta File",
+      "type": "string"
+    },
+    "concurrency": {
+      "default": 4,
+      "exclusiveMinimum": 0,
+      "title": "Concurrency",
+      "type": "integer"
+    },
+    "retries": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Retries",
+      "type": "integer"
+    },
+    "timeout": {
+      "default": 30,
+      "exclusiveMinimum": 0,
+      "title": "Timeout",
+      "type": "number"
+    },
+    "discovery_mode": {
+      "default": "keyword",
+      "enum": [
+        "keyword",
+        "fulltext",
+        "semantic",
+        "hybrid"
+      ],
+      "title": "Discovery Mode",
+      "type": "string"
+    },
+    "repair_enabled": {
+      "default": false,
+      "title": "Repair Enabled",
+      "type": "boolean"
+    }
+  },
+  "title": "PluginConfig",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

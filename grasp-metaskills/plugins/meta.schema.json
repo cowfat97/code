@@ -1,0 +1,88 @@
+{
+  "$defs": {
+    "LLMConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "base_url": {
+          "title": "Base Url",
+          "type": "string"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "api_key_env": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Api Key Env"
+        },
+        "timeout": {
+          "default": 30,
+          "exclusiveMinimum": 0,
+          "title": "Timeout",
+          "type": "number"
+        }
+      },
+      "required": [
+        "base_url",
+        "model"
+      ],
+      "title": "LLMConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "llm": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LLMConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "timeout": {
+      "default": 30,
+      "exclusiveMinimum": 0,
+      "title": "Timeout",
+      "type": "number"
+    },
+    "max_candidates": {
+      "default": 100,
+      "exclusiveMinimum": 0,
+      "title": "Max Candidates",
+      "type": "integer"
+    },
+    "max_steps": {
+      "default": 64,
+      "exclusiveMinimum": 0,
+      "title": "Max Steps",
+      "type": "integer"
+    },
+    "max_content_chars": {
+      "default": 2000,
+      "minimum": 0,
+      "title": "Max Content Chars",
+      "type": "integer"
+    },
+    "max_prompt_chars": {
+      "default": 100000,
+      "exclusiveMinimum": 0,
+      "title": "Max Prompt Chars",
+      "type": "integer"
+    }
+  },
+  "title": "MetaConfig",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}
