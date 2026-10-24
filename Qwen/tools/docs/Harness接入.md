@@ -152,6 +152,73 @@ MCP 工具的公开名称带点，例如 `pgmcp.query`。模型 FunctionCall 名
 
 自定义本地 MCP 服务支持 `command`、`args`、`cwd`、`env`、`allowed_tools`、`enabled`、`connection_timeout`。配置文件中的 `cwd` 相对于 `mcp.json`；未填时使用该配置所在目录，脚本参数按这一工作目录解析。
 
+### 新增本地 MCP 服务
+
+1. 获取服务源码，或按该服务的说明安装 Python 包。网关只负责启动与调用，不负责下载。
+2. 将服务与网关分开放置，例如：
+
+```text
+项目/
+├── tools/
+│   └── config/mcp.json
+└── mcp_servers/
+    └── search/
+        ├── server.py
+        └── requirements.txt
+```
+
+3. 按服务实际提供的依赖清单安装依赖。若有 `requirements.txt`，在项目目录执行：
+
+```bash
+python -m pip install -r mcp_servers/search/requirements.txt
+```
+
+4. 编辑 `tools/config/mcp.json`，在 `mcp_servers` 中追加服务，保留原有配置。完整示例：
+
+```json
+{
+  "mcp_servers": {
+    "pgmcp": {
+      "command": "@builtin/pgmcp",
+      "allowed_tools": ["query", "execute", "list_tables", "describe_table"]
+    },
+    "search": {
+      "command": "python",
+      "args": ["server.py"],
+      "cwd": "../../mcp_servers/search",
+      "enabled": true,
+      "allowed_tools": ["search"]
+    }
+  }
+}
+```
+
+`command` 必须指向已安装服务依赖的解释器；`python` 取决于启动 Harness 时的 PATH，不保证与 Harness 自身解释器相同。独立虚拟环境应配置对应解释器。
+
+`cwd` 从 `tools/config/` 解析，因此 `../../mcp_servers/search` 指向项目下的服务目录。`args` 必须与服务实际启动方式一致；若服务使用 `python -m 包名`，配置为 `"args": ["-m", "包名"]`。
+
+5. 重启网关，检查发现的工具再调用：
+
+```python
+from tools import ToolGateway
+
+async with ToolGateway() as gateway:
+    print([tool.name for tool in gateway.list_tools()])
+    result = await gateway.call("search.search", {"query": "内容"})
+    if result.is_error:
+        print(result.content)
+    else:
+        print(result.data)
+```
+
+前一个 `search` 是配置的服务名，后一个是服务实际暴露的工具名。参数必须符合该工具的 Schema；本例不代表模块已经内置搜索服务。
+
+`allowed_tools` 省略时导入全部工具，设为 `[]` 时不导入工具，设为工具名列表时只导入列出的工具。`enabled: false` 可禁用服务。
+
+服务必须使用 stdio MCP 协议：标准输出用于协议消息，日志应写到标准错误。单纯的 Python 函数文件不是 MCP 服务；普通函数使用 `register()` 接入。
+
+### Harness 动态接入
+
 Harness 也可以动态注册：
 
 ```python
