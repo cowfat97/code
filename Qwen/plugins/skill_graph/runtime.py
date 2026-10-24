@@ -17,6 +17,7 @@ from ..contracts import (
     ExecutionContext,
     ExecutionGraph,
     ExecutionTrace,
+    FailureInfo,
     GraphState,
     NodeResult,
     NodeState,
@@ -205,18 +206,41 @@ class GraphRuntime:
             repaired = False
             for node in batch:
                 ns = state.nodes[node.id]
-                if ns.status != "failed" or self.repair_engine is None:
+                if (
+                    ns.status != "failed" or self.repair_engine is None
+                    or graph.id in self._cancelled
+                ):
                     continue
                 category = ns.verification.category if ns.verification else "execution"
-                if category not in {"precondition", "postcondition", "execution", "timeout"}:
+                structured = getattr(self.repair_engine, "structured_failures", False)
+                if not structured and category not in {
+                    "precondition", "postcondition", "execution", "timeout"
+                }:
                     category = "postcondition"
+                details = ns.verification.details if ns.verification else {}
+                try:
+                    failure = FailureInfo(
+                        category=category or "execution",
+                        reason_code=details.get("reason_code", category or "execution"),
+                        message=ns.error or "",
+                        affected_items=details.get("affected_items", []),
+                        details=details.get("details", {}),
+                    )
+                except ValueError:
+                    failure = FailureInfo(
+                        category="verification", reason_code="invalid_failure_report",
+                        message="verifier returned invalid structured failure details",
+                    )
                 outcome = self.repair_engine.repair(
                     graph,
                     state,
                     RepairEvent(
                         node_id=node.id,
-                        type=category,
-                        message=ns.error or "",
+                        type=failure.category,
+                        reason_code=failure.reason_code,
+                        message=failure.message,
+                        affected_items=failure.affected_items,
+                        details=failure.details,
                         state=list(state.facts),
                     ),
                 )
@@ -270,7 +294,12 @@ class GraphRuntime:
         if ns.status != "verifying":
             ns.status = "ready"
             self._event(graph, state, node_id, "ready")
-            for retry in range(self.retries + 1):
+            # Policy recovery owns all retry budgets; do not bypass it with
+            # the legacy blanket exception retry loop.
+            retry_limit = (
+                0 if getattr(self.repair_engine, "structured_failures", False) else self.retries
+            )
+            for retry in range(retry_limit + 1):
                 ns.status = "running"
                 if not ns.recovery_retry:
                     ns.attempt += 1
@@ -333,7 +362,7 @@ class GraphRuntime:
                     if (
                         category == "timeout"
                         and node.skill
-                        and not node.skill.metadata.get("idempotent", False)
+                        and node.skill.metadata.get("idempotent") is not True
                     ):
                         ns.status = "outcome-unknown"
                         self._event(graph, state, node_id, "outcome-unknown", category=category)
@@ -348,7 +377,7 @@ class GraphRuntime:
                         call_id=ns.idempotency_key,
                         duration=time.perf_counter() - started,
                     )
-                    if retry == self.retries:
+                    if retry == retry_limit:
                         ns.status = "failed"
             if ns.status == "failed":
                 self._feedback(graph, node, ns)
@@ -387,8 +416,17 @@ class GraphRuntime:
             verdict = VerificationResult(passed=False, category="verification", message=str(exc))
         ns.verification = verdict
         ns.status = "succeeded" if verdict.passed else "failed"
+        if not verdict.passed and (
+            verdict.category == "outcome-unknown"
+            or (
+                verdict.category == "timeout" and node.skill
+                and node.skill.metadata.get("idempotent") is not True
+            )
+        ):
+            ns.status = "outcome-unknown"
         ns.error = None if verdict.passed else verdict.message
         if verdict.passed:
+            state.recovery_streaks.pop(node_id, None)
             state.facts = sorted(set(state.facts) | set(ns.result.observed_effects))
         self._feedback(graph, node, ns)
         self._event(

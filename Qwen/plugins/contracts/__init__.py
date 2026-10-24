@@ -8,7 +8,7 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from jsonschema import Draft202012Validator
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 
 class ContractModel(BaseModel):
@@ -146,10 +146,22 @@ class ExecutionGraph(ContractModel):
         return errors
 
 
+class FailureInfo(ContractModel):
+    """A capability reports a real failure without inventing effects or a repair."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+    category: str = Field(min_length=1)
+    reason_code: str = Field(min_length=1)
+    message: str = ""
+    affected_items: list[str] = Field(default_factory=list)
+    details: dict[str, JsonValue] = Field(default_factory=dict)
+
+
 class NodeResult(ContractModel):
     output: dict[str, Any] = Field(default_factory=dict)
     observed_effects: list[str] = Field(default_factory=list)
     evidence: list[str] = Field(default_factory=list)
+    failure: FailureInfo | None = None
 
 
 class VerificationResult(ContractModel):
@@ -186,6 +198,9 @@ class GraphState(ContractModel):
     trace: list[ExecutionTrace] = Field(default_factory=list)
     repair_attempts: dict[str, int] = Field(default_factory=dict)
     repair_audit: list[dict[str, Any]] = Field(default_factory=list)
+    # Persisted counters keep recovery bounded across runtime restarts.
+    recovery_attempts: dict[str, int] = Field(default_factory=dict)
+    recovery_streaks: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
 
 class ExecutionContext(ContractModel):
@@ -212,6 +227,9 @@ class RepairOperation(ContractModel):
 class RepairEvent(ContractModel):
     node_id: str
     type: str
+    reason_code: str = ""
+    affected_items: list[str] = Field(default_factory=list)
+    details: dict[str, JsonValue] = Field(default_factory=dict)
     message: str = ""
     state: list[str] = Field(default_factory=list)
     args: list[str] | None = None

@@ -1,4 +1,110 @@
 {
+  "$defs": {
+    "RepairPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "max_decisions": {
+          "default": 8,
+          "minimum": 0,
+          "title": "Max Decisions",
+          "type": "integer"
+        },
+        "max_same_failure": {
+          "default": 2,
+          "minimum": 0,
+          "title": "Max Same Failure",
+          "type": "integer"
+        },
+        "max_node_attempts": {
+          "default": 2,
+          "minimum": 0,
+          "title": "Max Node Attempts",
+          "type": "integer"
+        },
+        "max_added_nodes": {
+          "default": 3,
+          "minimum": 0,
+          "title": "Max Added Nodes",
+          "type": "integer"
+        },
+        "max_added_edges": {
+          "default": 5,
+          "minimum": 0,
+          "title": "Max Added Edges",
+          "type": "integer"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/RepairRule"
+          },
+          "title": "Rules",
+          "type": "array"
+        }
+      },
+      "title": "RepairPolicy",
+      "type": "object"
+    },
+    "RepairRule": {
+      "additionalProperties": false,
+      "description": "Rules match in configuration order; empty selectors match any failure.",
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "categories": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Categories",
+          "type": "array"
+        },
+        "action": {
+          "enum": [
+            "retry",
+            "patch",
+            "stop"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "max_attempts": {
+          "default": 2,
+          "minimum": 0,
+          "title": "Max Attempts",
+          "type": "integer"
+        },
+        "operators": {
+          "items": {
+            "enum": [
+              "InsertPrereq",
+              "Rebind",
+              "Substitute",
+              "Rewire",
+              "Bypass"
+            ],
+            "type": "string"
+          },
+          "title": "Operators",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "action"
+      ],
+      "title": "RepairRule",
+      "type": "object"
+    }
+  },
   "additionalProperties": false,
   "description": "Paths are relative to the entry configuration file, or the constructor base.",
   "properties": {
@@ -65,6 +171,9 @@
       "default": false,
       "title": "Repair Enabled",
       "type": "boolean"
+    },
+    "repair_policy": {
+      "$ref": "#/$defs/RepairPolicy"
     }
   },
   "title": "PluginConfig",

@@ -17,7 +17,7 @@ from .contracts.providers import SkillVerifier
 from .meta.planner import LLMProvider, MetaPlanner
 from .skill_graph.adapter import Payload, PluginAdapter
 from .skill_graph.plugin import SkillGraphPlugin
-from .skill_graph.repair import RepairEngine
+from .skill_graph.recovery import PolicyRepairEngine, RepairPolicy, RepairStrategy
 from .skills.configuration import SkillsConfig
 from .skills.registry import SkillRegistry
 from .tools import local
@@ -42,6 +42,7 @@ class PluginConfig(BaseModel):
     timeout: float = Field(default=30, gt=0, allow_inf_nan=False)
     discovery_mode: Literal["keyword", "fulltext", "semantic", "hybrid"] = "keyword"
     repair_enabled: bool = False
+    repair_policy: RepairPolicy = Field(default_factory=RepairPolicy)
 
     @classmethod
     def load(cls, path: str | Path) -> Self:
@@ -68,6 +69,7 @@ class Plugin:
         llm_provider: LLMProvider | None = None,
         functions: Mapping[str, Callable[..., Any]] | None = None,
         verifier: SkillVerifier | None = None,
+        repair_strategy: RepairStrategy | None = None,
         base_path: str | Path | None = None,
     ) -> None:
         self._base = (
@@ -86,6 +88,7 @@ class Plugin:
             if not isinstance(name, str) or not name or not callable(fn):
                 raise TypeError("functions must map nonempty names to callables")
         self._verifier = verifier
+        self._repair_strategy = repair_strategy
         self._lock = asyncio.Lock()
         self._adapter: PluginAdapter | None = None
         self._registry: SkillRegistry | None = None
@@ -102,6 +105,7 @@ class Plugin:
         llm_provider: LLMProvider | None = None,
         functions: Mapping[str, Callable[..., Any]] | None = None,
         verifier: SkillVerifier | None = None,
+        repair_strategy: RepairStrategy | None = None,
     ) -> Self:
         path = (
             Path(__file__).resolve().parent / "config" / "plugin.json"
@@ -113,6 +117,7 @@ class Plugin:
             llm_provider=llm_provider,
             functions=functions,
             verifier=verifier,
+            repair_strategy=repair_strategy,
             base_path=path.parent,
         )
 
@@ -146,7 +151,12 @@ class Plugin:
                     tools=tools,
                     planner=planner,
                     verifier=self._verifier,
-                    repair_engine=RepairEngine(registry) if self.config.repair_enabled else None,
+                    repair_engine=(
+                        PolicyRepairEngine(
+                            registry, self.config.repair_policy, strategy=self._repair_strategy
+                        )
+                        if self.config.repair_enabled else None
+                    ),
                     concurrency=self.config.concurrency,
                     retries=self.config.retries,
                     timeout=self.config.timeout,

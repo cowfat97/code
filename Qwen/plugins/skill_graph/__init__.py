@@ -5,6 +5,7 @@ from ..contracts import (
     ExecutionContext,
     ExecutionGraph,
     ExecutionTrace,
+    FailureInfo,
     GraphState,
     InputBinding,
     NodeResult,
@@ -37,6 +38,7 @@ from ..skills import (
 )
 from .compiler import CompilationError, GraphCompiler
 from .plugin import SkillGraphPlugin
+from .recovery import PolicyRepairEngine, RepairPolicy, RepairRule, RepairStrategy
 from .repair import RepairEngine, RepairError
 from .runtime import GraphRuntime
 from .tool_executor import ToolSkillExecutor
@@ -58,6 +60,11 @@ __all__ = [
     "GraphCompiler",
     "GraphRuntime",
     "GraphState",
+    "FailureInfo",
+    "PolicyRepairEngine",
+    "RepairPolicy",
+    "RepairRule",
+    "RepairStrategy",
     "InputBinding",
     "LLMProvider",
     "NodeResult",

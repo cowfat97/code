@@ -23,6 +23,19 @@ def verify_input(node: SkillNode, inputs: dict[str, Any], facts: list[str]) -> V
 
 
 def verify_result(node: SkillNode, result: NodeResult) -> VerificationResult:
+    # Failed capabilities do not have to fabricate a successful output payload.
+    if result.failure is not None:
+        failure = result.failure
+        return VerificationResult(
+            passed=False,
+            category=failure.category,
+            message=failure.message or failure.reason_code,
+            details={
+                "reason_code": failure.reason_code,
+                "affected_items": failure.affected_items,
+                "details": failure.details,
+            },
+        )
     if node.skill:
         errors = list(
             Draft202012Validator(node.skill.contract.output_schema).iter_errors(result.output)

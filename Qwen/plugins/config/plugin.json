@@ -8,5 +8,13 @@
   "retries": 0,
   "timeout": 30.0,
   "discovery_mode": "keyword",
-  "repair_enabled": false
+  "repair_enabled": false,
+  "repair_policy": {
+    "max_decisions": 8,
+    "max_same_failure": 2,
+    "max_node_attempts": 2,
+    "max_added_nodes": 3,
+    "max_added_edges": 5,
+    "rules": []
+  }
 }
