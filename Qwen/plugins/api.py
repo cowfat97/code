@@ -53,7 +53,7 @@ class PluginConfig(BaseModel):
 class Plugin:
     """Own every composed resource. Start twice raises; closing twice is harmless.
 
-    Construction loads the adjacent plugin.json automatically when config is omitted.
+    Construction loads config/plugin.json automatically when config is omitted.
     It performs no database IO or connections. Startup registers tools from
     plugins.tools.local before optional injected functions and configured MCP tools.
     Configuration never imports Python code.
@@ -70,7 +70,9 @@ class Plugin:
         base_path: str | Path | None = None,
     ) -> None:
         self._base = (
-            Path(__file__).resolve().parent if base_path is None else Path(base_path).absolute()
+            (Path(__file__).resolve().parent / "config")
+            if base_path is None
+            else Path(base_path).absolute()
         )
         self.config = (
             PluginConfig.load(self._base / "plugin.json")
@@ -100,7 +102,9 @@ class Plugin:
         functions: Mapping[str, Callable[..., Any]] | None = None,
         verifier: SkillVerifier | None = None,
     ) -> Self:
-        path = (Path(__file__).with_name("plugin.json") if path is None else Path(path)).resolve(
+        path = (Path(__file__).resolve().parent / "config" / "plugin.json"
+            if path is None
+            else Path(path)).resolve(
             strict=True
         )
         return cls(
