@@ -7,3 +7,4 @@ CLAUDE.md
 /Qwen/**/__pycache__/
 /Qwen/**/*.py[cod]
 /Qwen/.venv/
+.DS_Store
