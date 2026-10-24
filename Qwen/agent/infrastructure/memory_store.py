@@ -70,7 +70,7 @@ def get_memory_store():
 def initialize(database=None):
     """显式初始化；不创建、替换或清空实际历史记录。"""
     database = database if database is not None else Postgres()
-    migration = Path(__file__).resolve().parents[2] / "migrations" / "001_memory.sql"
+    migration = Path(__file__).resolve().parents[2] / "sql" / "001_memory.sql"
     with database.transaction() as connection:
         connection.execute(migration.read_text(encoding="utf-8-sig"))
 
