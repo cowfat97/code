@@ -71,7 +71,6 @@ class MetaConfig(StrictModel):
 
 class PlanStep(StrictModel):
     skill: str = Field(min_length=1)
-    version: str = Field(min_length=1)
     args: list[str]
 
 

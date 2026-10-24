@@ -1,7 +1,7 @@
 """MIT adaptation of meta_skill core/dependencies.rs, dcd3fb55.
 
 Uses unified Skill snapshots; metadata.requires/provides are capability strings.
-Explicit SkillDependency version requirements belong to the unified registry and
+Explicit SkillDependency references belong to the unified registry and
 are not interpreted by this upstream capability resolver.
 """
 

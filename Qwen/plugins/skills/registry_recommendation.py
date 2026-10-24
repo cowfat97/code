@@ -2,14 +2,12 @@
 
 Candidate aggregation is an application extension, not an upstream skill ranker.
 Feedback replay makes explicitly attributed source posterior learning durable using
-existing registry feedback rows; no cloud calls or extra state table are required.
+per-run file feedback records; no cloud calls or extra storage backend are required.
 """
 
 from __future__ import annotations
 
 import builtins
-import json
-import sqlite3
 from typing import Any, Protocol
 
 from ..contracts import SearchResult, Skill
@@ -24,12 +22,12 @@ from .metaskills_recommendation import (
 
 
 class RecommendationRegistry(Protocol):
-    db: sqlite3.Connection
+    def feedback(self) -> builtins.list[dict[str, Any]]: ...
 
-    def get(self, skill_id: str, version: str | None = None) -> Skill: ...
+    def get(self, skill_id: str) -> Skill: ...
     def list(self) -> builtins.list[Skill]: ...
     def dependencies(
-        self, skill_id: str, version: str | None = None, *, recursive: bool = False
+        self, skill_id: str, *, recursive: bool = False
     ) -> builtins.list[Skill]: ...
     def dependents(self, skill_id: str) -> builtins.list[Skill]: ...
     def search(
@@ -37,7 +35,7 @@ class RecommendationRegistry(Protocol):
     ) -> builtins.list[SearchResult]: ...
 
 
-def feedback_bandit(db: sqlite3.Connection) -> SignalBandit:
+def feedback_bandit(rows: builtins.list[dict[str, Any]]) -> SignalBandit:
     """Replay binary verified outcomes only for explicitly attributed signals.
 
     details.recommendation_signals lists source signal names. Optional
@@ -45,8 +43,8 @@ def feedback_bandit(db: sqlite3.Connection) -> SignalBandit:
     Numeric task reward is exposed separately; no hidden threshold maps it to binary.
     """
     bandit = SignalBandit()
-    for row in db.execute("SELECT success,details FROM feedback ORDER BY id"):
-        details = json.loads(row["details"])
+    for row in rows:
+        details = row["details"]
         if not isinstance(details, dict):
             continue
         signals = details.get("recommendation_signals", [])
@@ -85,7 +83,7 @@ def recommend_skills(
 ) -> builtins.list[SearchResult]:
     """Extension policy: learned reciprocal lexical/semantic ranks plus dependencies.
 
-    Reciprocal candidate ranks map unbounded SQLite BM25 and cosine onto a common
+    Reciprocal candidate ranks map unbounded in-memory BM25 and cosine onto a common
     scale. Only present candidate signals contribute. Dependency relations use the
     project_match signal. Estimated source weights keep this API deterministic.
     """
@@ -111,7 +109,7 @@ def recommend_skills(
     for skill in registry.dependencies(skill_id) + registry.dependents(skill_id):
         skills[skill.id] = skill
         signals.setdefault(skill.id, {})[SignalType.PROJECT_MATCH] = 1.0
-    weights = feedback_bandit(registry.db).estimated_weights()
+    weights = feedback_bandit(registry.feedback()).estimated_weights()
     results = [
         SearchResult(
             skill=skills[key],

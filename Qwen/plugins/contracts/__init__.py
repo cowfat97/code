@@ -17,7 +17,6 @@ class ContractModel(BaseModel):
 
 class SkillDependency(ContractModel):
     id: str
-    version: str = "*"
 
 
 class SkillContract(ContractModel):
@@ -41,7 +40,6 @@ class Skill(ContractModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     id: str = Field(min_length=1)
     name: str
-    version: str = "1.0.0"
     description: str = ""
     content: str = ""
     metadata: dict[str, Any] = Field(default_factory=dict)

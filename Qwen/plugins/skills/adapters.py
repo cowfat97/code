@@ -78,7 +78,6 @@ def manifest_skills(manifest: dict[str, Any]) -> list[Skill]:
                 id=definition["id"],
                 name=definition.get("name", definition["id"]),
                 description=definition.get("description", ""),
-                version=definition.get("version", "1.0.0"),
                 source=definition.get("source", "grasp-manifest"),
                 contract=SkillContract(
                     params=definition.get("params", []),

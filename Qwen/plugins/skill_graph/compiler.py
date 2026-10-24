@@ -8,8 +8,6 @@ from copy import deepcopy
 from typing import Any
 
 from jsonschema import Draft202012Validator
-from packaging.specifiers import SpecifierSet
-from packaging.version import Version
 
 from ..contracts import DependencyEdge, ExecutionGraph, InputBinding, Skill, SkillNode
 from ..skills.metaskills_dependencies import capability_edges, resolve_dependencies
@@ -275,11 +273,6 @@ class GraphCompiler:
         if proposal is not None:
             for item in proposal:
                 skill = by_id.get(item["skill"])
-                if item.get("version") and hasattr(self.registry, "get"):
-                    try:
-                        skill = self.registry.get(item["skill"], item["version"])
-                    except KeyError:
-                        skill = None
                 args = item.get("args", [])
                 if skill is None or len(args) != len(skill.contract.params):
                     metadata["rejected"].append(
@@ -322,35 +315,11 @@ class GraphCompiler:
                 cursor += 1
                 assert node.skill
                 for dependency in node.skill.dependencies:
-                    spec = (
-                        dependency.version
-                        if dependency.version[:1] in "<>=!~"
-                        else "==" + dependency.version
-                    )
-                    options = [
-                        s
-                        for s in skills
-                        if s.id == dependency.id
-                        and (dependency.version == "*" or Version(s.version) in SpecifierSet(spec))
-                    ]
-                    if hasattr(self.registry, "resolve"):
-                        try:
-                            options.append(self.registry.resolve(dependency.id, dependency.version))
-                        except KeyError:
-                            pass
-                    if not options:
-                        raise CompilationError(
-                            f"missing dependency: {dependency.id}@{dependency.version}"
-                        )
-                    selected = max(options, key=lambda s: Version(s.version))
+                    selected = by_id.get(dependency.id)
+                    if selected is None:
+                        raise CompilationError(f"missing dependency: {dependency.id}")
                     found = next(
-                        (
-                            n
-                            for n in nodes
-                            if n.skill
-                            and n.skill.id == selected.id
-                            and n.skill.version == selected.version
-                        ),
+                        (n for n in nodes if n.skill and n.skill.id == selected.id),
                         None,
                     )
                     if found is None:
@@ -394,13 +363,7 @@ class GraphCompiler:
                         continue
                     selected = view[entry.skill_id]
                     found = next(
-                        (
-                            n
-                            for n in nodes
-                            if n.skill
-                            and n.skill.id == selected.id
-                            and n.skill.version == selected.version
-                        ),
+                        (n for n in nodes if n.skill and n.skill.id == selected.id),
                         None,
                     )
                     if found is None:

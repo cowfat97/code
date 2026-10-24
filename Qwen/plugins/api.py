@@ -32,7 +32,8 @@ class PluginConfig(BaseModel):
     """Paths are relative to the entry configuration file, or the constructor base."""
 
     model_config = ConfigDict(extra="forbid", strict=True, frozen=True)
-    database: str = Field(default="skills.db", min_length=1)
+    skills_dir: str = Field(default="../skill_library", min_length=1)
+    state_dir: str = Field(default="../state", min_length=1)
     skills_file: str = Field(default="skills.json", min_length=1)
     mcp_file: str = Field(default="mcp.json", min_length=1)
     meta_file: str = Field(default="meta.json", min_length=1)
@@ -54,7 +55,7 @@ class Plugin:
     """Own every composed resource. Start twice raises; closing twice is harmless.
 
     Construction loads config/plugin.json automatically when config is omitted.
-    It performs no database IO or connections. Startup registers tools from
+    It performs no storage IO or connections. Startup registers tools from
     plugins.tools.local before optional injected functions and configured MCP tools.
     Configuration never imports Python code.
     Active invocations cannot close their own plugin; the host owns its lifecycle.
@@ -102,11 +103,11 @@ class Plugin:
         functions: Mapping[str, Callable[..., Any]] | None = None,
         verifier: SkillVerifier | None = None,
     ) -> Self:
-        path = (Path(__file__).resolve().parent / "config" / "plugin.json"
+        path = (
+            Path(__file__).resolve().parent / "config" / "plugin.json"
             if path is None
-            else Path(path)).resolve(
-            strict=True
-        )
+            else Path(path)
+        ).resolve(strict=True)
         return cls(
             PluginConfig.load(path),
             llm_provider=llm_provider,
@@ -122,7 +123,7 @@ class Plugin:
         async with self._lock:
             if self._adapter is not None or self._closing:
                 raise RuntimeError("plugin is already started or closing")
-            # Validate all module configuration before opening SQLite.
+            # Validate all configuration before opening file-backed storage.
             skills_path = self._path(self.config.skills_file)
             skills = SkillsConfig.load(skills_path)
             tools = ToolRegistry.from_config(self._path(self.config.mcp_file))
@@ -134,12 +135,10 @@ class Plugin:
                 local.register_tools(tools)
                 for name, fn in self._functions.items():
                     tools.register(fn, name=name)
-                database = self.config.database
-                if database != ":memory:":
-                    database_path = self._path(database)
-                    database_path.parent.mkdir(parents=True, exist_ok=True)
-                    database = str(database_path)
-                registry = SkillRegistry(database)
+                registry = SkillRegistry(
+                    self._path(self.config.skills_dir),
+                    state_path=self._path(self.config.state_dir),
+                )
                 registry.import_config(skills, base_path=skills_path.parent)
                 await tools.connect()
                 graph = SkillGraphPlugin(

@@ -1,5 +1,6 @@
 {
-  "database": "../../state/skills.db",
+  "skills_dir": "../skill_library",
+  "state_dir": "../state",
   "skills_file": "skills.json",
   "mcp_file": "mcp.json",
   "meta_file": "meta.json",

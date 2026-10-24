@@ -2,10 +2,16 @@
   "additionalProperties": false,
   "description": "Paths are relative to the entry configuration file, or the constructor base.",
   "properties": {
-    "database": {
-      "default": "skills.db",
+    "skills_dir": {
+      "default": "../skill_library",
       "minLength": 1,
-      "title": "Database",
+      "title": "Skills Dir",
+      "type": "string"
+    },
+    "state_dir": {
+      "default": "../state",
+      "minLength": 1,
+      "title": "State Dir",
       "type": "string"
     },
     "skills_file": {
@@ -62,6 +68,5 @@
     }
   },
   "title": "PluginConfig",
-  "type": "object",
-  "$schema": "https://json-schema.org/draft/2020-12/schema"
+  "type": "object"
 }

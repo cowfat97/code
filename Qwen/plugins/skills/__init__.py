@@ -5,7 +5,6 @@ from .metaskills_dependencies import capability_edges, resolve_dependencies
 from .metaskills_search import HashEmbeddingProvider, RrfConfig, SearchFilters
 from .metaskills_spec import SkillSpec, skill_from_spec, spec_from_skill
 from .registry import SkillRegistry
-from .registry import _matches as matches_version
 
 __all__ = [
     "SkillsConfig",
@@ -25,5 +24,3 @@ __all__ = [
     "capability_edges",
     "resolve_dependencies",
 ]
-
-__all__ += ["matches_version"]

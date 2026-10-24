@@ -10,6 +10,7 @@ import asyncio
 import copy
 import hashlib
 import json
+import time
 from typing import Any
 
 from ..contracts import (
@@ -123,7 +124,8 @@ class GraphRuntime:
             raise RuntimeError("graph already executing in this runtime")
         self._running_graphs.add(graph.id)
         try:
-            return await self._execute(graph, state)
+            with self.registry.execution_lock(graph.id):
+                return await self._execute(graph, state)
         finally:
             self._running_graphs.discard(graph.id)
 
@@ -141,8 +143,6 @@ class GraphRuntime:
         if state.graph_id != graph.id or state.graph_version != graph.version:
             raise ValueError("state does not match graph version")
         for node in graph.nodes:
-            if node.skill:
-                self.registry.get(node.skill.id, node.skill.version)
             state.nodes.setdefault(node.id, NodeState())
         for ns in state.nodes.values():
             if ns.status == "running":
@@ -241,12 +241,6 @@ class GraphRuntime:
             else:
                 state.status = "succeeded" if complete and goals_met else "failed"
         self._event(graph, state, None, "finished", status=state.status)
-        if hasattr(self.registry, "record_episode"):
-            self.registry.record_episode(
-                graph.task,
-                [n.skill.id for n in graph.nodes if n.skill and state.nodes[n.id].status in _DONE],
-                state.status == "succeeded",
-            )
         return state
 
     async def _run_node(self, graph: ExecutionGraph, state: GraphState, node_id: str) -> None:
@@ -286,7 +280,18 @@ class GraphRuntime:
                 ns.recovery_retry = False
                 context.idempotency_key = ns.idempotency_key
                 ns.cache_key = self._cache_key(node, inputs)
-                self._event(graph, state, node_id, "running", attempt=ns.attempt)
+                started = time.perf_counter()
+                self._event(
+                    graph,
+                    state,
+                    node_id,
+                    "running",
+                    attempt=ns.attempt,
+                    call_id=ns.idempotency_key,
+                    inputs=copy.deepcopy(inputs),
+                    skill_id=node.skill.id if node.skill else None,
+                    tool=node.skill.metadata.get("tool") if node.skill else None,
+                )
                 try:
                     if node.kind in {"src", "snk"}:
                         ns.result = NodeResult(observed_effects=list(state.facts))
@@ -302,7 +307,15 @@ class GraphRuntime:
                             )
                         ).model_copy(deep=True)
                     ns.status = "verifying"
-                    self._event(graph, state, node_id, "result_persisted")
+                    self._event(
+                        graph,
+                        state,
+                        node_id,
+                        "result_persisted",
+                        result=ns.result.model_dump(mode="json"),
+                        call_id=ns.idempotency_key,
+                        duration=time.perf_counter() - started,
+                    )
                     break
                 except asyncio.CancelledError:
                     ns.status = "outcome-unknown" if node.kind == "skill" else "cancelled"
@@ -325,7 +338,16 @@ class GraphRuntime:
                         ns.status = "outcome-unknown"
                         self._event(graph, state, node_id, "outcome-unknown", category=category)
                         return
-                    self._event(graph, state, node_id, "attempt_failed", category=category)
+                    self._event(
+                        graph,
+                        state,
+                        node_id,
+                        "attempt_failed",
+                        error=ns.error,
+                        category=category,
+                        call_id=ns.idempotency_key,
+                        duration=time.perf_counter() - started,
+                    )
                     if retry == self.retries:
                         ns.status = "failed"
             if ns.status == "failed":
@@ -369,13 +391,19 @@ class GraphRuntime:
         if verdict.passed:
             state.facts = sorted(set(state.facts) | set(ns.result.observed_effects))
         self._feedback(graph, node, ns)
-        self._event(graph, state, node_id, ns.status, category=verdict.category)
+        self._event(
+            graph,
+            state,
+            node_id,
+            ns.status,
+            category=verdict.category,
+            verification=verdict.model_dump(mode="json"),
+        )
 
     def _feedback(self, graph: ExecutionGraph, node: SkillNode, ns: NodeState) -> None:
         if node.skill:
             self.registry.record_feedback(
                 node.skill.id,
-                node.skill.version,
                 node.id,
                 ns.status == "succeeded",
                 {

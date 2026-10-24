@@ -162,15 +162,9 @@ class RepairEngine:
                 ):
                     raise RepairError(f"unscheduled capability dependency: {edge.capability}")
             for dependency in node.skill.dependencies:
-                from ..skills import matches_version
-
                 candidates = [n for n in new.nodes if n.skill and n.skill.id == dependency.id]
                 if not any(
                     n.skill
-                    and (
-                        dependency.version == "*"
-                        or matches_version(n.skill.version, dependency.version)
-                    )
                     and node.id in new.descendants({n.id})
                     and n.id != node.id
                     for n in candidates
@@ -348,6 +342,7 @@ class RepairEngine:
             "added_nodes": sorted(added_nodes),
             "added_edges": len(added),
             "operation": operation.model_dump(mode="json"),
+            "previous_node": node.model_dump(mode="json"),
         }
         updated.repair_audit.append(audit)
         updated.trace.append(ExecutionTrace(node_id=node.id, event="repair", details=audit))

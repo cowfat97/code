@@ -35,7 +35,6 @@ class SkillMetadata(BaseModel):
     model_config = ConfigDict(extra="allow")
     id: str = ""
     name: str = ""
-    version: str = ""
     description: str = ""
     tags: list[str] = Field(default_factory=list)
     requires: list[str] = Field(default_factory=list)
@@ -122,14 +121,11 @@ def skill_from_spec(
         contract = SkillContract.model_validate(document["grasp_contract"])
     metadata = copy.deepcopy(document.get("grasp_metadata", {}))
     metadata.update(copy.deepcopy(document["metadata"]))
-    identity = {key: metadata.pop(key) for key in ("id", "name", "version", "description")}
+    identity = {key: metadata.pop(key) for key in ("id", "name", "description")}
     metadata["metaskills_spec"] = document
     metadata["metaskills_spec_hash"] = spec_content_hash(document)
-    version = identity["version"] or "0.1.0"
-    if not identity["version"]:
-        metadata["metaskills_declared_version"] = ""
     return Skill(
-        **{**identity, "version": version},
+        **identity,
         metadata=metadata,
         source=document.get("grasp_source", source or f"metaskills://skills/{identity['id']}"),
         dependencies=[
@@ -150,7 +146,6 @@ def spec_from_skill(skill: Skill) -> dict[str, Any]:
         id=skill.id,
         name=skill.name,
         description=skill.description,
-        version=skill.metadata.get("metaskills_declared_version", skill.version),
     )
     for key in ("tags", "requires", "provides", "platforms", "author", "license", "context"):
         if key in skill.metadata:

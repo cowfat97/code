@@ -20,7 +20,6 @@ class SkillSource(BaseModel):
     recursive: bool = True
     id: str | None = Field(default=None, min_length=1)
     name: str | None = None
-    version: str | None = None
     description: str | None = None
     contract: SkillContract | None = None
     tool: str | None = None

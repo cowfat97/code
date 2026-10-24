@@ -20,7 +20,7 @@ OPERATIONS = frozenset(
         "skills.register",
         "skills.search",
         "skills.get",
-        "skills.history",
+        "skills.reload",
         "skills.dependencies",
         "skills.compose",
         "skills.delete",

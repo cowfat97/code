@@ -124,15 +124,14 @@ class MetaPlanner:
             raise MetaValidationError("candidate limit exceeded")
         try:
             snapshots = [Skill.model_validate(s.model_dump()).model_copy(deep=True) for s in skills]
-            catalog = {(s.id, s.version): s for s in snapshots}
+            catalog = {s.id: s for s in snapshots}
             if len(catalog) != len(snapshots):
-                raise MetaValidationError("duplicate skill/version candidate")
-            hashes = {f"{s.id}@{s.version}": digest(encode(s.model_dump())) for s in snapshots}
+                raise MetaValidationError("duplicate skill candidate")
+            hashes = {s.id: digest(encode(s.model_dump())) for s in snapshots}
             summaries = [
                 {
                     "id": s.id,
                     "name": s.name,
-                    "version": s.version,
                     "description": s.description[: self.config.max_content_chars],
                     "content": s.content[: self.config.max_content_chars],
                     "contract": s.contract.model_dump(),
@@ -179,9 +178,9 @@ class MetaPlanner:
             counts: Counter[str] = Counter()
             node_ids: set[str] = set()
             for step in result.proposal:
-                if (step.skill, step.version) not in catalog:
-                    raise ValueError(f"unknown skill/version: {step.skill}@{step.version}")
-                selected = catalog[step.skill, step.version]
+                if step.skill not in catalog:
+                    raise ValueError(f"unknown skill: {step.skill}")
+                selected = catalog[step.skill]
                 if len(step.args) != len(selected.contract.params):
                     raise ValueError(f"argument arity mismatch: {step.skill}")
                 mapping = dict(zip(selected.contract.params, step.args, strict=True))

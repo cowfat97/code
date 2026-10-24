@@ -4,19 +4,16 @@ from __future__ import annotations
 
 import base64
 import copy
+import json
 import os
 import stat
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import yaml
 
-from ..contracts import Skill, SkillContract
+from ..contracts import Skill, SkillContract, SkillDependency
 from .configuration import SkillSource
-from .metaskills_spec import spec_from_skill
-
-if TYPE_CHECKING:
-    from .registry import SkillRegistry
 
 
 def _frontmatter(content: str) -> dict[str, Any]:
@@ -49,7 +46,7 @@ def _contract(metadata: dict[str, Any]) -> SkillContract:
     return SkillContract.model_validate(value)
 
 
-def import_source(registry: SkillRegistry, source: SkillSource, base_path: Path) -> list[Skill]:
+def load_source(source: SkillSource, base_path: Path) -> list[Skill]:
     if not source.enabled:
         return []
     path = Path(source.path).expanduser()
@@ -84,27 +81,53 @@ def import_source(registry: SkillRegistry, source: SkillSource, base_path: Path)
         default_id = root.name if relative == "." else relative
         identity = source.id if source.id is not None else raw.get("id", default_id)
         name = source.name if source.name is not None else raw.get("name", identity)
-        version = source.version if source.version is not None else str(raw.get("version", "1.0.0"))
         description = (
             source.description if source.description is not None else raw.get("description", "")
         )
+        sidecar_path = directory / "contract.json"
+        sidecar: dict[str, Any] = {}
+        if sidecar_path.exists():
+            if not sidecar_path.resolve().is_relative_to(directory):
+                raise ValueError("contract file escapes the skill directory")
+            sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+            allowed = {"id", "name", "description", "contract", "tool", "metadata", "dependencies"}
+            if not isinstance(sidecar, dict) or set(sidecar) - allowed:
+                raise ValueError("invalid contract.json fields")
+        identity = source.id or sidecar.get("id", identity)
+        name = source.name or sidecar.get("name", name)
+        description = source.description or sidecar.get("description", description)
         metadata = copy.deepcopy(raw)
+        metadata.update(sidecar.get("metadata", {}))
+        metadata.pop("version", None)
         metadata["raw_frontmatter"] = copy.deepcopy(raw)
         metadata["resource_directory"] = str(directory)
         metadata["resources"] = _snapshot_resources(directory)
-        if source.tool is not None:
-            metadata["tool"] = source.tool
+        tool = source.tool or sidecar.get("tool", raw.get("tool"))
+        if tool is not None:
+            if not isinstance(tool, str) or not tool.strip():
+                raise ValueError("tool binding must be a nonempty string")
+            metadata["tool"] = tool
+        dependencies = sidecar.get("dependencies", raw.get("dependencies", []))
         skill = Skill(
             id=identity,
             name=name,
-            version=version,
             description=description,
             content=content,
             metadata=metadata,
+            dependencies=[
+                SkillDependency(id=d) if isinstance(d, str) else SkillDependency.model_validate(d)
+                for d in dependencies
+            ],
             source=directory.as_uri(),
-            contract=source.contract if source.contract is not None else _contract(raw),
+            contract=source.contract
+            if source.contract is not None
+            else (
+                SkillContract.model_validate(sidecar["contract"])
+                if "contract" in sidecar
+                else _contract(raw)
+            ),
         )
-        imported.append(registry.register_spec(spec_from_skill(skill)))
+        imported.append(skill)
     return imported
 
 

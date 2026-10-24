@@ -64,16 +64,12 @@ class _SkillRequest(_Request):
     skill_id: str
 
 
-class _VersionRequest(_SkillRequest):
-    version: str | None = None
-
-
-class _DependenciesRequest(_VersionRequest):
+class _DependenciesRequest(_SkillRequest):
     recursive: bool = False
 
 
 class _ExportRequest(_Request):
-    include_history: bool = False
+    pass
 
 
 class _ImportRequest(_Request):
@@ -286,18 +282,11 @@ class SkillGraphPlugin:
                 ]
             }
         if operation == "skills.get":
-            version = _VersionRequest.model_validate(document)
-            return {
-                "skill": self.skills.get(version.skill_id, version.version).model_dump(mode="json")
-            }
-        if operation == "skills.history":
             identity = _SkillRequest.model_validate(document)
-            return {
-                "history": [
-                    skill.model_dump(mode="json")
-                    for skill in self.skills.history(identity.skill_id)
-                ]
-            }
+            return {"skill": self.skills.get(identity.skill_id).model_dump(mode="json")}
+        if operation == "skills.reload":
+            _Request.model_validate(document)
+            return {"skills": [s.model_dump(mode="json") for s in self.skills.reload()]}
         if operation == "skills.dependencies":
             dependencies = _DependenciesRequest.model_validate(document)
             return {
@@ -305,7 +294,6 @@ class SkillGraphPlugin:
                     skill.model_dump(mode="json")
                     for skill in self.skills.dependencies(
                         dependencies.skill_id,
-                        dependencies.version,
                         recursive=dependencies.recursive,
                     )
                 ]
@@ -322,6 +310,6 @@ class SkillGraphPlugin:
             self.skills.delete(deletion.skill_id)
             return {"deleted": True}
         if operation == "skills.export":
-            export = _ExportRequest.model_validate(document)
-            return {"json": self.skills.export_json(include_history=export.include_history)}
+            _ExportRequest.model_validate(document)
+            return {"json": self.skills.export_json()}
         raise ValueError(f"Unknown plugin operation: {operation!r}")
