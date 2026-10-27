@@ -126,10 +126,10 @@
       "title": "Skills File",
       "type": "string"
     },
-    "mcp_file": {
-      "default": "mcp.json",
+    "tools_config_file": {
+      "default": "../../tools/config/gateway.json",
       "minLength": 1,
-      "title": "Mcp File",
+      "title": "Tools Config File",
       "type": "string"
     },
     "meta_file": {

@@ -333,3 +333,20 @@ except ToolError as error:
 ## 验证范围
 
 已验证本地函数、动态注册、并发、超时、取消、FunctionCall、SQLite 持久化、真实 stdio MCP 工具发现和调用分发。Text2SQL 已验证 HTTP 请求/响应契约，未评估真实模型 SQL 正确率。当前环境无法连接目标 PG，真实数据库查询、提交和回滚仍需在可连接环境验证。
+
+### 通用内置工具
+
+默认注册 `read_file`、`list_files`、`parse_document`、`validate_json`、`write_artifact`、`http_request`，以及 `count_chars`。
+`config/gateway.json` 的 `builtin` 控制权限：`read_roots` 为允许读取的目录（默认空），`artifact_dir` 为写入目录，`http_allowed_origins` 为 HTTP 源白名单（如 `https://api.example.com`，默认空）。相对路径均相对配置文件目录。
+文件与产物上限由 `max_file_bytes` 控制，目录枚举上限为 `max_list_entries`，HTTP 请求体和响应上限为 `max_response_bytes`。目录链接不会被递归遍历，越界路径会被拒绝。产物路径必须是相对路径，默认禁止覆盖；HTTP 不跟随重定向、不读取环境代理配置。
+
+```python
+await gateway.call("read_file", {"path": "source.md"})
+await gateway.call("list_files", {"path": ".", "recursive": True})
+await gateway.call("parse_document", {"path": "source.pdf"})
+await gateway.call("validate_json", {"value": {"id": 1}, "json_schema": {"type": "object"}})
+await gateway.call("write_artifact", {"path": "results/dag.json", "content": "{}"})
+await gateway.call("http_request", {"url": "https://api.example.com/status"})
+```
+
+PDF、Word 解析需要额外安装 `requirements-documents.txt`，按页/段落提取文字，无 OCR；TXT、Markdown、JSON、YAML 返回原始 UTF-8 文本。PDF 最多 500 页；DOCX 解压内容最多为文件限制的 10 倍。Schema 采用 Draft 2020-12，允许本地引用，不获取远程引用，最多返回 100 条错误。

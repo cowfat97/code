@@ -5,29 +5,73 @@ from __future__ import annotations
 import asyncio
 import json
 import tomllib
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import asdict
+from importlib import import_module
 from pathlib import Path
-from typing import Any, Literal, Self
+from typing import Any, Literal, Protocol, Self, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from .contracts.providers import SkillVerifier
 from .graph.adapter import Payload, PluginAdapter
 from .graph.plugin import SkillGraphPlugin
+from .graph.ports import ToolDescriptor, ToolResponse, ToolsPort
 from .graph.recovery import PolicyRepairEngine, RepairPolicy, RepairStrategy
 from .meta.planner import LLMProvider, MetaPlanner
 from .skills.configuration import SkillsConfig
 from .skills.registry import SkillRegistry
 from .task import TaskManager, ValidationIssue
-from .tools import local
-from .tools.registry import ToolRegistry
 
 _invocation: ContextVar[asyncio.Task[dict[str, Any]] | None] = ContextVar(
     "plugin_invocation", default=None
 )
+
+
+class GatewayPort(ToolsPort, Protocol):
+    """Only the independent gateway public lifecycle and registration API is required."""
+
+    def register(self, function: Any, *, name: str | None = None, **options: Any) -> None: ...
+    async def start(self) -> Any: ...
+    async def aclose(self) -> None: ...
+
+
+class _GatewayAdapter:
+    """Normalize the gateway timeout into the graph runtime's timeout contract."""
+
+    def __init__(self, gateway: GatewayPort, timeout_error: type[Exception]) -> None:
+        self._gateway = gateway
+        self._timeout_error = timeout_error
+
+    def register(self, function: Any, *, name: str | None = None, **options: Any) -> None:
+        self._gateway.register(function, name=name, **options)
+
+    def list_tools(self) -> Sequence[ToolDescriptor]:
+        return self._gateway.list_tools()
+
+    async def start(self) -> None:
+        await self._gateway.start()
+
+    async def aclose(self) -> None:
+        await self._gateway.aclose()
+
+    async def call(
+        self, name: str, arguments: dict[str, Any], timeout: float | None = None
+    ) -> ToolResponse:
+        try:
+            return await self._gateway.call(name, arguments, timeout)
+        except self._timeout_error as exc:
+            raise TimeoutError(str(exc)) from exc
+
+
+def _gateway(config_file: Path) -> GatewayPort:
+    parent = __package__.rpartition(".")[0]
+    module = import_module(f"{parent}.tools" if parent else "tools")
+    return _GatewayAdapter(
+        cast(GatewayPort, module.ToolGateway(config_file=config_file)), module.ToolTimeoutError
+    )
 
 
 class PluginConfig(BaseModel):
@@ -37,7 +81,7 @@ class PluginConfig(BaseModel):
     skills_dir: str = Field(default="../skills/library", min_length=1)
     state_dir: str = Field(default="../state", min_length=1)
     skills_file: str = Field(default="skills.json", min_length=1)
-    mcp_file: str = Field(default="mcp.json", min_length=1)
+    tools_config_file: str = Field(default="../../tools/config/gateway.json", min_length=1)
     meta_file: str = Field(default="meta.json", min_length=1)
     task_templates_dir: str = Field(default="../task/templates", min_length=1)
     task_template: str = Field(default="basic", min_length=1)
@@ -60,8 +104,9 @@ class Plugin:
     """Own every composed resource. Start twice raises; closing twice is harmless.
 
     Construction loads config/plugin.json automatically when config is omitted.
-    It performs no storage IO or connections. Startup registers tools from
-    plugins.tools.local before optional injected functions and configured MCP tools.
+    It performs no storage IO or connections. Startup uses the sibling tools gateway,
+    which owns builtins, MCP and monitoring.
+    Optional injected functions are registered through that gateway.
     Configuration never imports Python code.
     Active invocations cannot close their own plugin; the host owns its lifecycle.
     """
@@ -97,7 +142,7 @@ class Plugin:
         self._lock = asyncio.Lock()
         self._adapter: PluginAdapter | None = None
         self._registry: SkillRegistry | None = None
-        self._tools: ToolRegistry | None = None
+        self._tools: GatewayPort | None = None
         self._active: set[asyncio.Task[dict[str, Any]]] = set()
         self._closing = False
         self._close_task: asyncio.Task[None] | None = None
@@ -136,13 +181,12 @@ class Plugin:
             # Validate all configuration before opening file-backed storage.
             skills_path = self._path(self.config.skills_file)
             skills = SkillsConfig.load(skills_path)
-            tools = ToolRegistry.from_config(self._path(self.config.mcp_file))
+            tools = _gateway(self._path(self.config.tools_config_file))
             planner = MetaPlanner.from_config(
                 self._path(self.config.meta_file), provider=self._provider
             )
             registry: SkillRegistry | None = None
             try:
-                local.register_tools(tools)
                 for name, fn in self._functions.items():
                     tools.register(fn, name=name)
                 registry = SkillRegistry(
@@ -150,7 +194,7 @@ class Plugin:
                     state_path=self._path(self.config.state_dir),
                 )
                 registry.import_config(skills, base_path=skills_path.parent)
-                await tools.connect()
+                await tools.start()
                 graph = SkillGraphPlugin(
                     registry,
                     tools=tools,

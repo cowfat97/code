@@ -60,6 +60,8 @@ class ToolGateway:
             else Path(__file__).parent / "config/gateway.json"
         ).resolve()
         settings = GatewayConfig.load(settings_path)
+        self._builtin_settings = settings.builtin
+        self._settings_dir = settings_path.parent
         load_builtin = settings.load_builtin if load_builtin is None else load_builtin
         load_mcp = settings.load_mcp if load_mcp is None else load_mcp
         concurrency = settings.concurrency if concurrency is None else concurrency
@@ -205,9 +207,9 @@ class ToolGateway:
             self._state = "starting"
             try:
                 if self._load_builtin:
-                    from .builtin import BUILTIN_TOOLS
+                    from .builtin import configured_tools
 
-                    for name, fn in BUILTIN_TOOLS.items():
+                    for name, fn in configured_tools(self._builtin_settings, self._settings_dir).items():
                         self.register(fn, name=name)
                 if self._load_mcp:
                     config = MCPConfig.load(self._config_path)

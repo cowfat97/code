@@ -127,7 +127,7 @@ skills/library/
 
 ## 4. 包装并注册现有评测函数
 
-在 `tools/local/finance.py` 新增窄适配函数。下面的 `existing_evaluation` 是公司已有代码的示例名称，需要换成真实模块、函数和返回字段：
+在 `../tools/builtin/finance.py` 新增窄适配函数。下面的 `existing_evaluation` 是公司已有代码的示例名称，需要换成真实模块、函数和返回字段：
 
 ```python
 from existing_evaluation import evaluate_finance
@@ -144,15 +144,15 @@ def finance_accuracy(batch_id: str, answers_path: str) -> dict:
 
 前提：旧函数正常返回代表检查已完整完成。若它可能返回部分结果或错误标记，包装器必须检查并抛出异常，不能无条件宣告效果。报告完成标准以实际业务定义为准。
 
-在 `tools/local/__init__.py` 加入已有工具映射：
+在 `../tools/builtin/__init__.py` 加入已有工具映射：
 
 ```python
 from .finance import finance_accuracy
 
-TOOLS["finance_accuracy"] = finance_accuracy
+BUILTIN_TOOLS["finance_accuracy"] = finance_accuracy
 ```
 
-保留原来的 `register_tools()`。同步和异步函数都可注册。不要给函数增加未经约束的任意命令执行能力。
+`tools/` 与 `plugins/` 为同级模块；独立工具网关启动时自动注册 `BUILTIN_TOOLS`，无需额外调用注册函数。同步和异步函数都可注册。不要给函数增加未经约束的任意命令执行能力。
 
 当前 `ToolSkillExecutor` 要求工具返回包含 `output` 的节点结果；输出 Schema 验证的是 `output` 内容，而不是整个返回信封。
 

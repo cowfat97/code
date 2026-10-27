@@ -2,7 +2,6 @@
   "skills_dir": "../skills/library",
   "state_dir": "../state",
   "skills_file": "skills.json",
-  "mcp_file": "mcp.json",
   "meta_file": "meta.json",
   "concurrency": 4,
   "retries": 0,
@@ -18,5 +17,6 @@
     "rules": []
   },
   "task_templates_dir": "../task/templates",
-  "task_template": "basic"
+  "task_template": "basic",
+  "tools_config_file": "../../tools/config/gateway.json"
 }
