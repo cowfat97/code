@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "templates_dir": {"type": "string", "minLength": 1, "default": "../templates"},
+    "fallback_template": {"type": "string", "minLength": 1, "default": "basic"}
+  },
+  "additionalProperties": false
+}

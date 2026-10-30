@@ -1,0 +1,14 @@
+{
+  "plugins": [
+    {
+      "name": "task",
+      "type": "task",
+      "enabled": true
+    },
+    {
+      "name": "graph",
+      "type": "graph",
+      "enabled": true
+    }
+  ]
+}

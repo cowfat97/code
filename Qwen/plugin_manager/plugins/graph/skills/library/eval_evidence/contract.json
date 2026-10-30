@@ -1,0 +1,241 @@
+{
+  "id": "eval_evidence",
+  "name": "评测来源证据提取",
+  "description": "金融 法律 模型 评测 资料 来源 证据 引用 提取",
+  "contract": {
+    "params": [
+      "d"
+    ],
+    "preconditions": [
+      "requirements_ready(d)"
+    ],
+    "effects": [
+      "evidence_ready(d)"
+    ],
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "requirements": {
+          "type": "object",
+          "properties": {
+            "domain": {
+              "type": "string",
+              "enum": [
+                "finance",
+                "legal"
+              ]
+            },
+            "objective": {
+              "type": "string",
+              "minLength": 1
+            },
+            "capabilities": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            },
+            "item_count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "difficulty": {
+              "type": "string",
+              "enum": [
+                "easy",
+                "medium",
+                "hard"
+              ]
+            },
+            "as_of": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expert_constraints": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 0
+            },
+            "synthetic": {
+              "type": "boolean"
+            },
+            "acceptance_criteria": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "domain",
+            "objective",
+            "capabilities",
+            "item_count",
+            "difficulty",
+            "as_of",
+            "expert_constraints",
+            "synthetic",
+            "acceptance_criteria"
+          ],
+          "additionalProperties": false
+        },
+        "source_documents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "locator": {
+                "type": "string",
+                "minLength": 1
+              },
+              "excerpt": {
+                "type": "string",
+                "minLength": 1
+              },
+              "valid_from": {
+                "type": "string",
+                "minLength": 1
+              },
+              "valid_until": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "jurisdiction": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "locator",
+              "excerpt",
+              "valid_from",
+              "valid_until",
+              "jurisdiction"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "requirements",
+        "source_documents"
+      ],
+      "additionalProperties": false
+    },
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "evidence_packet": {
+          "type": "object",
+          "properties": {
+            "domain": {
+              "type": "string",
+              "enum": [
+                "finance",
+                "legal"
+              ]
+            },
+            "synthetic": {
+              "type": "boolean"
+            },
+            "records": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "locator": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "statement": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "as_of": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "id",
+                  "source_id",
+                  "locator",
+                  "statement",
+                  "as_of"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            },
+            "excluded_source_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 0
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "domain",
+            "synthetic",
+            "records",
+            "excluded_source_ids",
+            "limitations"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "evidence_packet"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "metadata": {
+    "domain": "shared",
+    "execution_mode": "planning_only",
+    "purpose": "evaluation_question_set_generation",
+    "schema_version": "2.0",
+    "effect_policy": "Completion predicates are verified claims: report only after genuine execution and all checks pass. No tool executor is bundled."
+  }
+}

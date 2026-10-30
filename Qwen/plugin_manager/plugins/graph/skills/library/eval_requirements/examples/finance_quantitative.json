@@ -1,0 +1,51 @@
+{
+  "task": "生成用于插件编译验证的虚构金融计算题",
+  "goal": [
+    "package_ready(finance)"
+  ],
+  "initial_conditions": [
+    "task_requested(finance)",
+    "quantitative_selected(finance)"
+  ],
+  "inputs": {
+    "eval_requirements:1": {
+      "request": {
+        "domain": "finance",
+        "objective": "生成用于插件编译验证的虚构金融计算题",
+        "capabilities": [
+          "财务计算"
+        ],
+        "item_count": 2,
+        "difficulty": "medium",
+        "as_of": "2026-01-01",
+        "expert_constraints": [
+          "证据只能使用提供的虚构资料",
+          "所有质量闸门必须通过"
+        ],
+        "synthetic": true
+      }
+    },
+    "eval_evidence:1": {
+      "source_documents": [
+        {
+          "id": "synthetic-finance-1",
+          "title": "虚构财务说明，仅供测试",
+          "locator": "fixture:finance/1",
+          "excerpt": "虚构公司甲：2025年度收入100万元、成本60万元；毛利为收入减成本，毛利率为毛利除以收入。",
+          "valid_from": "2025-01-01",
+          "valid_until": null,
+          "jurisdiction": null
+        }
+      ]
+    },
+    "finance_normalize:1": {
+      "financial_conventions": {
+        "currency": "CNY",
+        "unit_conventions": [
+          "金额单位万元，比例使用小数"
+        ],
+        "reporting_period": "2025年度"
+      }
+    }
+  }
+}

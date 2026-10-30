@@ -1,0 +1,4 @@
+# Local composition dependencies; the core engine itself uses only Python stdlib.
+-r ../model/requirements.txt
+-r ../plugin_manager/plugins/task/requirements.txt
+-r ../plugin_manager/plugins/graph/requirements.txt

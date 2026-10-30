@@ -58,3 +58,32 @@ python predict/predict.py -c configs/base.yaml -c configs/predict.yaml
 - 训练开始时把生效的最终配置写一份到 `runs/<run_name>/config.yaml`，评估与推理据此复现。
 - 机器相关的绝对路径放 `configs/local.yaml`（已被忽略），不写进提交的配置。
 - 模型权重、检查点、日志、下载缓存和大型数据文件不应直接提交到 Git（见 `.gitignore`）。
+
+## 独立模型交互客户端
+
+根目录的 Python 模块提供异步 OpenAI 兼容 `/chat/completions` 客户端，与训练流水线独立。安装 `model/requirements.txt`，填写 `model/.env`（格式见 `.env.example`）中的 API 根地址、模型名和可选密钥。默认始终读取模块旁的 `.env`，也可传 `env_file=`；进程环境变量逐项覆盖文件，读取不会修改进程环境。
+
+从 `Qwen/` 目录启动插件时可使用：
+
+```python
+import asyncio
+from model import ModelClient
+
+
+async def main():
+    client = ModelClient()
+    text = await client.complete("你好，请介绍一下自己。")
+    print(text)
+    response = await client.chat(
+        [
+            {"role": "system", "content": "请用中文回答。"},
+            {"role": "user", "content": "什么是异步调用？"},
+        ]
+    )
+    print(response.content)
+
+
+asyncio.run(main())
+```
+
+从仓库根目录也可 `from Qwen.model import ModelClient`。`chat()` 接受完整消息历史及可选 `tools`、`tool_choice`，返回 `ChatResponse`（`content`、`tool_calls`、`model`、`usage`）；工具调用保留原始 JSON 参数字符串，由调用方执行并维护历史。`complete(prompt) -> str` 可供插件的 LLM 接口调用；无文本时抛出 `ModelResponseError`。所有错误继承 `ModelError`，配置、请求、响应和超时分别有专用异常。客户端每次请求自动关闭连接，取消请求会向上传播；当前不提供流式输出、自动重试或工具自动执行。

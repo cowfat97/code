@@ -1,0 +1,522 @@
+{
+  "id": "finance_reasoning_verify",
+  "name": "金融推理校验闸门",
+  "description": "金融 模型 评测 校验 公式 计算 口径 概念 推理",
+  "contract": {
+    "params": [],
+    "preconditions": [
+      "reasoning_ready(finance)"
+    ],
+    "effects": [
+      "reasoning_verified(finance)"
+    ],
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "requirements": {
+          "type": "object",
+          "properties": {
+            "domain": {
+              "type": "string",
+              "enum": [
+                "finance",
+                "legal"
+              ]
+            },
+            "objective": {
+              "type": "string",
+              "minLength": 1
+            },
+            "capabilities": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            },
+            "item_count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "difficulty": {
+              "type": "string",
+              "enum": [
+                "easy",
+                "medium",
+                "hard"
+              ]
+            },
+            "as_of": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expert_constraints": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 0
+            },
+            "synthetic": {
+              "type": "boolean"
+            },
+            "acceptance_criteria": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "domain",
+            "objective",
+            "capabilities",
+            "item_count",
+            "difficulty",
+            "as_of",
+            "expert_constraints",
+            "synthetic",
+            "acceptance_criteria"
+          ],
+          "additionalProperties": false
+        },
+        "evidence_packet": {
+          "type": "object",
+          "properties": {
+            "domain": {
+              "type": "string",
+              "enum": [
+                "finance",
+                "legal"
+              ]
+            },
+            "synthetic": {
+              "type": "boolean"
+            },
+            "records": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "locator": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "statement": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "as_of": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "id",
+                  "source_id",
+                  "locator",
+                  "statement",
+                  "as_of"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            },
+            "excluded_source_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 0
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "domain",
+            "synthetic",
+            "records",
+            "excluded_source_ids",
+            "limitations"
+          ],
+          "additionalProperties": false
+        },
+        "finance_context": {
+          "type": "object",
+          "properties": {
+            "currency": {
+              "type": "string",
+              "minLength": 1
+            },
+            "unit_conventions": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            },
+            "reporting_period": {
+              "type": "string",
+              "minLength": 1
+            },
+            "as_of": {
+              "type": "string",
+              "minLength": 1
+            },
+            "definitions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "term": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "definition": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "term",
+                  "definition",
+                  "source_ids"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "currency",
+            "unit_conventions",
+            "reporting_period",
+            "as_of",
+            "definitions"
+          ],
+          "additionalProperties": false
+        },
+        "reasoning_bundle": {
+          "type": "object",
+          "properties": {
+            "domain": {
+              "type": "string",
+              "enum": [
+                "finance",
+                "legal"
+              ]
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "quantitative",
+                "conceptual",
+                "rule_application"
+              ]
+            },
+            "nodes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "operation": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "input_refs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 1
+                  },
+                  "conclusion": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "id",
+                  "operation",
+                  "input_refs",
+                  "conclusion",
+                  "source_ids"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            },
+            "edges": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "target": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "source",
+                  "target",
+                  "reason"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 0
+            },
+            "conclusion_node_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            },
+            "assumptions": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "domain",
+            "kind",
+            "nodes",
+            "edges",
+            "conclusion_node_ids",
+            "assumptions"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "requirements",
+        "evidence_packet",
+        "finance_context",
+        "reasoning_bundle"
+      ],
+      "additionalProperties": false
+    },
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "verified_reasoning": {
+          "type": "object",
+          "properties": {
+            "reasoning": {
+              "type": "object",
+              "properties": {
+                "domain": {
+                  "type": "string",
+                  "const": "finance"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "quantitative",
+                    "conceptual"
+                  ]
+                },
+                "nodes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "operation": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "input_refs": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "minItems": 1
+                      },
+                      "conclusion": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "source_ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "minItems": 1
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "operation",
+                      "input_refs",
+                      "conclusion",
+                      "source_ids"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "minItems": 1
+                },
+                "edges": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "target": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "reason": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "source",
+                      "target",
+                      "reason"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "minItems": 0
+                },
+                "conclusion_node_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 1
+                },
+                "assumptions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 0
+                }
+              },
+              "required": [
+                "domain",
+                "kind",
+                "nodes",
+                "edges",
+                "conclusion_node_ids",
+                "assumptions"
+              ],
+              "additionalProperties": false
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "check": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "passed": {
+                    "type": "boolean",
+                    "const": true
+                  },
+                  "evidence": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "check",
+                  "passed",
+                  "evidence"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "reasoning",
+            "checks"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "verified_reasoning"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "metadata": {
+    "domain": "shared",
+    "execution_mode": "planning_only",
+    "purpose": "evaluation_question_set_generation",
+    "schema_version": "2.0",
+    "effect_policy": "Completion predicates are verified claims: report only after genuine execution and all checks pass. No tool executor is bundled.",
+    "repair_protected": true
+  }
+}

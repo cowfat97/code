@@ -1,0 +1,34 @@
+{
+  "templates_dir": "../templates",
+  "fallback_template": "basic",
+  "llm": null,
+  "timeout": 60.0,
+  "max_questions_per_round": 3,
+  "max_prompt_chars": 100000,
+  "max_response_chars": 100000,
+  "rules": {
+    "general": [
+      {
+        "id": "goal",
+        "text": "目标与成功条件明确，不能将建议当成用户决定",
+        "blocking": true
+      },
+      {
+        "id": "scope",
+        "text": "明确任务范围与不包含的内容",
+        "blocking": true
+      },
+      {
+        "id": "acceptance",
+        "text": "输出要求和验收标准必须可核对",
+        "blocking": true
+      },
+      {
+        "id": "evidence",
+        "text": "不把未知事实写成已验证事实；缺少依据时提出事实核查请求",
+        "blocking": true
+      }
+    ],
+    "templates": {}
+  }
+}

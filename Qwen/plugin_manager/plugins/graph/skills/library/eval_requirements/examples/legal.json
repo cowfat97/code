@@ -1,0 +1,47 @@
+{
+  "task": "生成用于插件编译验证的虚构法律规则适用题",
+  "goal": [
+    "package_ready(legal)"
+  ],
+  "initial_conditions": [
+    "task_requested(legal)"
+  ],
+  "inputs": {
+    "eval_requirements:1": {
+      "request": {
+        "domain": "legal",
+        "objective": "生成用于插件编译验证的虚构法律规则适用题",
+        "capabilities": [
+          "规则适用"
+        ],
+        "item_count": 2,
+        "difficulty": "medium",
+        "as_of": "2026-01-01",
+        "expert_constraints": [
+          "证据只能使用提供的虚构资料",
+          "所有质量闸门必须通过"
+        ],
+        "synthetic": true
+      }
+    },
+    "eval_evidence:1": {
+      "source_documents": [
+        {
+          "id": "synthetic-rule-1",
+          "title": "虚构规则集，仅供测试",
+          "locator": "fixture:rule/1",
+          "excerpt": "虚构法域甲：合同经双方书面确认生效，未成年人订约另须监护人同意。",
+          "valid_from": "2025-01-01",
+          "valid_until": null,
+          "jurisdiction": "虚构法域甲"
+        }
+      ]
+    },
+    "legal_scope:1": {
+      "legal_context": {
+        "jurisdiction": "虚构法域甲",
+        "as_of": "2026-01-01"
+      }
+    }
+  }
+}
